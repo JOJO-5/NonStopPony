@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.media.RingtoneManager
+import android.net.Uri
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,7 +14,10 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        private const val RINGTONE_PICK_REQUEST = 1001
     }
+
+    private var ringtoneResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -46,6 +51,38 @@ class MainActivity : FlutterActivity() {
                     val pm = getSystemService(POWER_SERVICE) as PowerManager
                     val isIgnoring = pm.isIgnoringBatteryOptimizations(packageName)
                     result.success(isIgnoring)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Ringtone channel: get system ringtones + pick custom audio
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.example.alarm_clock/ringtone"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getSystemRingtones" -> {
+                    try {
+                        val ringtones = getSystemRingtones()
+                        result.success(ringtones)
+                    } catch (e: Exception) {
+                        result.error("RINGTONE_ERROR", e.message, null)
+                    }
+                }
+                "pickCustomAudio" -> {
+                    ringtoneResult = result
+                    try {
+                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            setType("audio/*")
+                            putExtra(Intent.EXTRA_TITLE, "选择闹铃音乐")
+                        }
+                        startActivityForResult(intent, RINGTONE_PICK_REQUEST)
+                    } catch (e: Exception) {
+                        ringtoneResult = null
+                        result.error("PICK_ERROR", e.message, null)
+                    }
                 }
                 else -> result.notImplemented()
             }
@@ -104,6 +141,111 @@ class MainActivity : FlutterActivity() {
                     "title" to "战马闹钟"
                 ))
             }
+        }
+    }
+
+    /**
+     * Queries the system's RingtoneManager for all alarm-type ringtones
+     * and returns them as a list of maps with title and uri fields.
+     */
+    private fun getSystemRingtones(): List<Map<String, String>> {
+        val ringtones = mutableListOf<Map<String, String>>()
+
+        // Add "默认" option that uses the app's built-in alarm sound
+        ringtones.add(mapOf(
+            "title" to "默认",
+            "uri" to "default"
+        ))
+
+        val rm = RingtoneManager(this)
+        rm.setType(RingtoneManager.TYPE_ALARM)
+        val cursor = rm.cursor
+
+        while (cursor.moveToNext()) {
+            val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+            val uri = rm.getRingtoneUri(cursor.position).toString()
+            ringtones.add(mapOf(
+                "title" to title,
+                "uri" to uri
+            ))
+        }
+
+        // Also add notification sounds as they can also be used as alarms
+        val rmNotif = RingtoneManager(this)
+        rmNotif.setType(RingtoneManager.TYPE_NOTIFICATION)
+        val cursorNotif = rmNotif.cursor
+
+        while (cursorNotif.moveToNext()) {
+            val title = cursorNotif.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+            val uri = rmNotif.getRingtoneUri(cursorNotif.position).toString()
+            ringtones.add(mapOf(
+                "title" to title,
+                "uri" to uri
+            ))
+        }
+
+        // Also add ringtone sounds
+        val rmRing = RingtoneManager(this)
+        rmRing.setType(RingtoneManager.TYPE_RINGTONE)
+        val cursorRing = rmRing.cursor
+
+        while (cursorRing.moveToNext()) {
+            val title = cursorRing.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+            val uri = rmRing.getRingtoneUri(cursorRing.position).toString()
+            ringtones.add(mapOf(
+                "title" to title,
+                "uri" to uri
+            ))
+        }
+
+        return ringtones
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == RINGTONE_PICK_REQUEST) {
+            if (resultCode == RESULT_OK && data != null) {
+                val uri = data.data
+                if (uri != null) {
+                    // Take persistent permission so we can access it later
+                    try {
+                        contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to take persistable uri permission", e)
+                    }
+
+                    // Get display name from the content URI
+                    var displayName = "自定义音乐"
+                    try {
+                        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                if (nameIndex >= 0) {
+                                    displayName = cursor.getString(nameIndex)
+                                    // Remove file extension
+                                    displayName = displayName.substringBeforeLast('.')
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to get display name", e)
+                    }
+
+                    ringtoneResult?.success(mapOf(
+                        "title" to displayName,
+                        "uri" to uri.toString()
+                    ))
+                } else {
+                    ringtoneResult?.success(null)
+                }
+            } else {
+                ringtoneResult?.success(null)
+            }
+            ringtoneResult = null
         }
     }
 }
