@@ -1,0 +1,39 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#1A0A06"/>
+  <!-- Subtle radial warm glow -->
+  <circle cx="512" cy="550" r="340" fill="#3D1A08" opacity="0.7"/>
+  <!-- Alarm bell top knobs -->
+  <circle cx="348" cy="190" r="52" fill="#E8936A"/>
+  <circle cx="676" cy="190" r="52" fill="#E8936A"/>
+  <!-- Bell connector -->
+  <rect x="376" y="164" width="272" height="52" rx="26" fill="#E8936A"/>
+  <!-- Clock outer ring -->
+  <circle cx="512" cy="512" r="298" fill="#2C1208" stroke="#E8936A" stroke-width="18"/>
+  <!-- Inner decorative ring -->
+  <circle cx="512" cy="512" r="268" fill="none" stroke="#E8936A" stroke-width="3" opacity="0.35"/>
+  <!-- Hour tick marks (12) -->
+  <line x1="512" y1="228" x2="512" y2="268" stroke="#E8936A" stroke-width="18" stroke-linecap="round"/>
+  <line x1="512" y1="756" x2="512" y2="796" stroke="#E8936A" stroke-width="18" stroke-linecap="round"/>
+  <line x1="228" y1="512" x2="268" y2="512" stroke="#E8936A" stroke-width="18" stroke-linecap="round"/>
+  <line x1="756" y1="512" x2="796" y2="512" stroke="#E8936A" stroke-width="18" stroke-linecap="round"/>
+  <!-- Minor ticks (diagonal 4) -->
+  <line x1="330" y1="330" x2="357" y2="357" stroke="#E8936A" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <line x1="694" y1="330" x2="667" y2="357" stroke="#E8936A" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <line x1="330" y1="694" x2="357" y2="667" stroke="#E8936A" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <line x1="694" y1="694" x2="667" y2="667" stroke="#E8936A" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <!-- Hour hand ~10 o'clock direction -->
+  <line x1="512" y1="512" x2="390" y2="390" stroke="white" stroke-width="28" stroke-linecap="round"/>
+  <!-- Minute hand ~2 o'clock direction -->
+  <line x1="512" y1="512" x2="622" y2="358" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <!-- Second hand (accent orange) -->
+  <line x1="512" y1="512" x2="578" y2="680" stroke="#E8936A" stroke-width="12" stroke-linecap="round"/>
+  <!-- Second hand tail -->
+  <line x1="512" y1="512" x2="468" y2="400" stroke="#E8936A" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <!-- Center cap -->
+  <circle cx="512" cy="512" r="30" fill="#E8936A"/>
+  <circle cx="512" cy="512" r="16" fill="#2C1208"/>
+  <!-- Bell bottom clapper -->
+  <ellipse cx="512" cy="810" rx="44" ry="22" fill="#E8936A"/>
+  <!-- 战马 label area - horse silhouette simplified overlay (transparent, future asset) -->
+</svg>

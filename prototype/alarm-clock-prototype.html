@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>闹钟 · 单双周</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Inter:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#FDF8F3;--surface:#FFFFFF;--surface-glass:rgba(255,255,255,0.72);
+    --accent:#E8936A;--accent-light:#F5B99A;--accent-subtle:#FCE6D2;
+    --text-primary:#2C241E;--text-secondary:#8C7C72;--text-tertiary:#B8A99F;
+    --text-on-accent:#FFFFFF;--border:#F0E8E0;
+    --shadow-card:0 4px 24px rgba(44,36,30,0.06);
+    --radius-card:20px;--radius-sm:12px;--radius-full:999px;--margin:24px;
+    --ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.22,1,0.36,1);
+    --font-sans:'Noto Sans SC',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --font-display:'Inter','Noto Sans SC',-apple-system,sans-serif;
+    --font-mono:'JetBrains Mono','Inter','Noto Sans SC',monospace;
+  }
+  html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:var(--text-primary);-webkit-font-smoothing:antialiased}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#FAF0E8 0%,#FDF8F3 40%,#F8EDE4 100%)}
+  .phone{position:relative;width:390px;height:844px;background:var(--bg);border-radius:44px;box-shadow:0 0 0 1px rgba(255,255,255,0.5),0 0 0 2px rgba(44,36,30,0.06),0 32px 80px rgba(44,36,30,0.12),0 8px 24px rgba(44,36,30,0.08);overflow:hidden;display:flex;flex-direction:column}
+  .phone::before{content:'';position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:32px;background:#1A1512;border-radius:20px;z-index:100}
+  .screen{flex:1;position:relative;overflow:hidden;padding-top:56px}
+  .page{position:absolute;inset:0;padding-top:56px;overflow-y:auto;overflow-x:hidden;transition:transform 0.45s var(--ease-smooth),opacity 0.35s ease;-webkit-overflow-scrolling:touch}
+  .page--enter{transform:translateX(100%);opacity:0}
+  .page--active{transform:translateX(0);opacity:1}
+  .page--exit{transform:translateX(-30%);opacity:0}
+  .status-bar{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 32px 6px;font-size:13px;font-weight:600;z-index:40;color:var(--text-secondary);font-family:var(--font-display);pointer-events:none}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:8px var(--margin) 4px}
+  .header__title{font-size:28px;font-weight:600;letter-spacing:0.01em;color:var(--text-primary)}
+  .header__nav-btn{background:transparent;border:none;color:var(--accent);font-size:22px;font-weight:300;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background 0.2s}
+  .header__nav-btn:hover{background:var(--accent-subtle)}
+  .header__action{width:44px;height:44px;border:none;background:transparent;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);transition:background 0.2s ease;-webkit-tap-highlight-color:transparent}
+  .header__action:hover{background:var(--accent-subtle)}.header__action svg{width:26px;height:26px}
+  .page::-webkit-scrollbar{width:0}
+
+  .week-toggle-wrap{padding:4px var(--margin) 10px}
+  .week-toggle{display:flex;background:var(--surface);border-radius:var(--radius-full);padding:3px;box-shadow:var(--shadow-card);position:relative}
+  .week-toggle__slider{position:absolute;top:3px;left:3px;height:calc(100% - 6px);width:calc(50% - 3px);background:linear-gradient(135deg,#E8936A,#F5B99A);border-radius:var(--radius-full);transition:transform 0.4s var(--ease-spring);box-shadow:0 2px 12px rgba(232,147,106,0.3)}
+  .week-toggle__slider.right{transform:translateX(100%)}
+  .week-toggle__btn{flex:1;padding:10px 12px;border:none;background:transparent;border-radius:var(--radius-full);font-family:var(--font-sans);font-size:14px;font-weight:500;cursor:pointer;position:relative;z-index:2;transition:color 0.3s ease;color:var(--text-tertiary);-webkit-tap-highlight-color:transparent}
+  .week-toggle__btn--active{color:var(--text-on-accent)}
+  .week-toggle__sub{display:block;font-size:10px;font-weight:400;opacity:0.7;margin-top:2px}
+  .week-header-info{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 0;font-size:12px;color:var(--text-tertiary)}
+  .week-header-badge{padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:500}
+  .week-header-badge--single{background:#FFF0E8;color:var(--accent)}
+  .week-header-badge--double{background:#E8F0F5;color:#4A7B8C}
+
+  /* Alarm List */
+  .alarm-list{padding:2px var(--margin) 32px;display:flex;flex-direction:column;gap:14px}
+  .alarm-card{background:var(--surface);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:var(--radius-card);padding:18px 20px;box-shadow:var(--shadow-card);transition:transform 0.2s var(--ease-spring);cursor:pointer}
+  .alarm-card:active{transform:scale(0.98)}
+  .alarm-card__top{display:flex;align-items:center;justify-content:space-between}
+  .alarm-card__time-wrap{display:flex;align-items:baseline;gap:4px}
+  .alarm-card__time{font-family:var(--font-display);font-size:42px;font-weight:500;line-height:1;letter-spacing:-0.02em;color:var(--text-primary)}
+  .alarm-card__ampm{font-size:14px;font-weight:400;color:var(--text-tertiary);margin-left:2px}
+  .alarm-card__toggle{position:relative;width:50px;height:30px;flex-shrink:0}
+  .alarm-card__toggle input{opacity:0;width:0;height:0;position:absolute}
+  .alarm-card__toggle .slider{position:absolute;inset:0;background:#E0D6CC;border-radius:15px;transition:background 0.3s ease;cursor:pointer}
+  .alarm-card__toggle .slider::after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;background:white;border-radius:50%;transition:transform 0.35s var(--ease-spring);box-shadow:0 2px 6px rgba(44,36,30,0.15)}
+  .alarm-card__toggle input:checked+.slider{background:var(--accent)}
+  .alarm-card__toggle input:checked+.slider::after{transform:translateX(20px)}
+  .alarm-card__bottom{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .alarm-card__label{font-size:14px;font-weight:400;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .alarm-card__badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:500;letter-spacing:0.02em;white-space:nowrap;flex-shrink:0;border:1px solid transparent}
+  .alarm-card__badge--weekly{background:#EBF5E8;color:#5B8C4A}.alarm-card__badge--single{background:#FFF0E8;color:var(--accent)}
+  .alarm-card__badge--double{background:#E8F0F5;color:#4A7B8C}.alarm-card__badge--inactive{background:transparent;border-color:var(--border);color:var(--text-tertiary)}
+  .alarm-card--off .alarm-card__time{color:var(--text-tertiary)}.alarm-card--off .alarm-card__badge{opacity:0.5}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;color:var(--text-tertiary);gap:12px}
+  .empty-state svg{width:56px;height:56px;opacity:0.4}.empty-state p{font-size:15px;font-weight:400}
+
+  /* Schedule */
+  .schedule-month{padding:0 0 32px}
+  .schedule-month-header{display:flex;align-items:center;justify-content:space-between;padding:0 var(--margin) 8px}
+  .schedule-month-title{font-size:17px;font-weight:600;color:var(--text-primary)}
+  .schedule-week{display:flex;align-items:center;padding:10px var(--margin);border-bottom:1px solid var(--border);transition:background 0.2s;cursor:pointer}
+  .schedule-week:hover{background:var(--accent-subtle)}
+  .schedule-week--today{background:#FFF8F4}
+  .schedule-week--today .schedule-week__label{color:var(--accent);font-weight:600}
+  .schedule-week__num{width:28px;font-size:13px;font-weight:500;color:var(--text-secondary);flex-shrink:0}
+  .schedule-week__info{flex:1;display:flex;flex-direction:column;gap:1px}
+  .schedule-week__dates{font-size:13px;font-weight:400;color:var(--text-tertiary)}
+  .schedule-week__work-status{font-size:11px;font-weight:400;color:var(--text-secondary);margin-top:1px}
+  .schedule-week__toggle-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .schedule-week__type-btn{padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--border);background:var(--surface);font-family:var(--font-sans);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.25s ease;-webkit-tap-highlight-color:transparent;min-width:48px;text-align:center}
+  .schedule-week__type-btn--single{background:#FFF0E8;border-color:var(--accent-light);color:var(--accent)}
+  .schedule-week__type-btn--double{background:#E8F0F5;border-color:#B8C8D8;color:#4A7B8C}
+  .schedule-week__override-badge{font-size:9px;background:var(--accent-subtle);color:var(--accent);padding:2px 6px;border-radius:8px;margin-left:4px}
+  .schedule-legend{display:flex;gap:16px;padding:12px var(--margin) 4px;font-size:11px;color:var(--text-tertiary)}
+  .schedule-legend-item{display:flex;align-items:center;gap:6px}
+  .schedule-legend-dot{width:8px;height:8px;border-radius:50%}
+  .schedule-legend-dot--single{background:var(--accent)}
+  .schedule-legend-dot--double{background:#4A7B8C}
+
+  /* Timer */
+  .timer-input-picker{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 24px 0}
+  .timer-input-group{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .timer-input-group__scroll{height:120px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:40px 0;width:64px;text-align:center}
+  .timer-input-group__scroll::-webkit-scrollbar{display:none}
+  .timer-input-group__item{height:40px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:26px;font-weight:300;color:var(--text-tertiary);transition:all 0.15s;cursor:pointer}
+  .timer-input-group__item--selected{color:var(--text-primary);font-weight:500;font-size:34px}
+  .timer-colon{font-family:var(--font-mono);font-size:28px;font-weight:300;color:var(--text-tertiary);margin-top:-10px}
+  .timer-input-label{font-size:11px;color:var(--text-tertiary);font-weight:400;margin-top:-4px}
+  .timer-circle{position:relative;width:260px;height:260px;margin:0 auto 4px}
+  .timer-circle svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .timer-circle__bg{fill:none;stroke:var(--border);stroke-width:4}
+  .timer-circle__progress{fill:none;stroke:url(#timerGrad);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 0.3s ease}
+  .timer-circle__center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .timer-circle__time{font-family:var(--font-mono);font-size:52px;font-weight:300;letter-spacing:2px;color:var(--text-primary)}
+  .timer-circle__label{font-size:13px;font-weight:400;color:var(--text-tertiary);margin-top:2px}
+  .timer-presets{display:flex;gap:8px;padding:16px var(--margin);overflow-x:auto;scrollbar-width:none;flex-wrap:wrap;justify-content:center}
+  .timer-preset{padding:8px 18px;border-radius:var(--radius-full);border:1px solid var(--border);background:var(--surface);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all 0.25s ease;white-space:nowrap}
+  .timer-preset:hover{border-color:var(--accent-light);color:var(--accent)}
+  .timer-preset--active{background:var(--accent-subtle);border-color:var(--accent-light);color:var(--accent)}
+  .timer-controls{display:flex;align-items:center;justify-content:center;gap:28px;padding:8px var(--margin) 24px}
+  .timer-btn{width:68px;height:68px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--font-sans);font-size:14px;font-weight:500;transition:transform 0.2s var(--ease-spring)}
+  .timer-btn:active{transform:scale(0.92)}
+  .timer-btn--start{background:linear-gradient(135deg,#E8936A,#F5B99A);color:white;box-shadow:0 4px 20px rgba(232,147,106,0.35);width:80px;height:80px;font-size:16px}
+  .timer-btn--pause{background:var(--surface);color:var(--accent);box-shadow:var(--shadow-card);border:1px solid var(--accent-subtle)}
+  .timer-btn--reset{background:var(--surface);color:var(--text-tertiary);box-shadow:var(--shadow-card)}
+
+  /* Stopwatch */
+  .stopwatch-display{display:flex;flex-direction:column;align-items:center;padding:32px var(--margin) 8px}
+  .stopwatch-time{font-family:var(--font-mono);font-size:64px;font-weight:300;letter-spacing:3px;color:var(--text-primary);line-height:1}
+  .stopwatch-sub{font-family:var(--font-mono);font-size:28px;font-weight:300;color:var(--text-tertiary);margin-top:4px;letter-spacing:1px}
+  .stopwatch-controls{display:flex;align-items:center;justify-content:center;gap:28px;padding:24px var(--margin) 16px}
+  .stopwatch-btn{width:68px;height:68px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--font-sans);font-size:14px;font-weight:500;transition:transform 0.2s var(--ease-spring)}
+  .stopwatch-btn:active{transform:scale(0.92)}
+  .stopwatch-btn--start{background:linear-gradient(135deg,#E8936A,#F5B99A);color:white;box-shadow:0 4px 20px rgba(232,147,106,0.35);width:80px;height:80px;font-size:16px}
+  .stopwatch-btn--pause{background:var(--accent-subtle);color:var(--accent);width:80px;height:80px;font-size:16px}
+  .stopwatch-btn--lap{background:var(--surface);color:var(--text-secondary);box-shadow:var(--shadow-card);border:1px solid var(--border)}
+  .stopwatch-btn--reset{background:var(--surface);color:var(--text-tertiary);box-shadow:var(--shadow-card)}
+  .stopwatch-laps{padding:4px var(--margin) 24px;max-height:200px;overflow-y:auto}
+  .stopwatch-lap{display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:14px;font-weight:400}
+  .stopwatch-lap:last-child{border-bottom:none}
+  .stopwatch-lap__num{color:var(--text-tertiary);font-weight:300}
+  .stopwatch-lap__time{color:var(--text-primary)}
+  .stopwatch-lap__diff{color:var(--text-tertiary);font-weight:300;font-size:13px}
+
+  /* Edit Page */
+  .edit-header{display:flex;align-items:center;justify-content:space-between;padding:8px var(--margin) 4px}
+  .edit-header__back,.edit-header__save{width:44px;height:44px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);border-radius:50%;transition:background 0.2s}
+  .edit-header__title{font-size:17px;font-weight:500;color:var(--text-primary)}
+  .time-picker{display:flex;align-items:center;justify-content:center;gap:4px;padding:20px 24px 14px;user-select:none}
+  .time-picker__col{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .time-picker__scroll{height:160px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:56px 0;width:72px;text-align:center}
+  .time-picker__scroll::-webkit-scrollbar{display:none}
+  .time-picker__item{height:48px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:26px;font-weight:350;color:var(--text-tertiary);transition:all 0.15s;cursor:pointer}
+  .time-picker__item--selected{color:var(--text-primary);font-weight:500;font-size:34px}
+  .time-picker__sep{font-family:var(--font-display);font-size:30px;font-weight:300;color:var(--text-tertiary);padding:0 2px}
+  .time-picker__ampm-wrap{display:flex;flex-direction:column;gap:6px;margin-left:10px}
+  .time-picker__ampm-btn{padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-tertiary);cursor:pointer;transition:all 0.2s ease}
+  .time-picker__ampm-btn--active{background:var(--accent-subtle);border-color:var(--accent-light);color:var(--accent)}
+  .edit-form{padding:0 var(--margin) 32px;display:flex;flex-direction:column;gap:14px}
+  .edit-section{background:var(--surface);border-radius:var(--radius-card);box-shadow:var(--shadow-card);overflow:hidden}
+  .edit-row{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;min-height:52px;border-bottom:1px solid var(--border)}
+  .edit-row:last-child{border-bottom:none}
+  .edit-row__label{font-size:15px;font-weight:500;color:var(--text-primary)}
+  .edit-row__value{font-size:15px;font-weight:400;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+  .repeat-options{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap}
+  .repeat-chip{padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--border);background:transparent;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all 0.25s ease}
+  .repeat-chip:hover{border-color:var(--accent-light)}
+  .repeat-chip--active{background:var(--accent-subtle);border-color:var(--accent-light);color:var(--accent)}
+  .repeat-chip--inactive{opacity:0.4}
+
+  /* Ringing */
+  .ringing-screen{background:linear-gradient(170deg,#2C241E 0%,#3D322B 50%,#5A4840 100%);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+  .ringing-screen .sunrise{position:absolute;top:-20%;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle at center,rgba(248,210,180,0.15) 0%,rgba(232,147,106,0.08) 30%,transparent 70%);pointer-events:none;animation:sunrise-glow 4s ease-in-out infinite alternate}
+  @keyframes sunrise-glow{0%{transform:translateX(-50%) scale(1);opacity:0.6}100%{transform:translateX(-50%) scale(1.08);opacity:1}}
+  .ringing-screen .ringing-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:24px;padding:0 var(--margin)}
+  .ringing-screen .ringing-label{font-size:16px;font-weight:400;color:rgba(255,255,255,0.55);letter-spacing:0.06em}
+  .ringing-screen .ringing-time{font-family:var(--font-display);font-size:80px;font-weight:300;line-height:1;letter-spacing:-0.03em;color:white}
+  .ringing-screen .ringing-ampm{font-size:18px;font-weight:300;color:rgba(255,255,255,0.4);margin-top:-12px}
+  .ringing-screen .ringing-badge{padding:6px 16px;border-radius:var(--radius-full);background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);font-size:13px;font-weight:400;color:rgba(255,255,255,0.7)}
+  .ringing-screen .ringing-actions{display:flex;gap:24px;margin-top:32px}
+  .ringing-screen .ringing-btn{width:80px;height:80px;border-radius:50%;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:var(--font-sans);font-size:12px;font-weight:500;transition:transform 0.2s var(--ease-spring)}
+  .ringing-screen .ringing-btn:active{transform:scale(0.92)}
+  .ringing-screen .ringing-btn--snooze{background:rgba(255,255,255,0.10);backdrop-filter:blur(8px);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.10)}
+  .ringing-screen .ringing-btn--dismiss{background:var(--accent);color:white;box-shadow:0 4px 20px rgba(232,147,106,0.35)}
+  .ringing-screen .ringing-btn svg{width:26px;height:26px}
+
+  /* Navigation */
+  .nav-bar{display:flex;align-items:center;justify-content:space-around;padding:8px 16px 28px;border-top:1px solid var(--border);background:var(--surface-glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  .nav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;border:none;background:transparent;cursor:pointer;color:var(--text-tertiary);font-size:10px;font-weight:500;transition:color 0.2s;padding:4px 12px;-webkit-tap-highlight-color:transparent}
+  .nav-btn svg{width:24px;height:24px}
+  .nav-btn--active{color:var(--accent)}
+  @media(max-width:420px){.phone{width:100%;height:100vh;border-radius:0;box-shadow:none}.phone::before{display:none}}
+  @media(min-width:421px) and (max-height:860px){.phone{height:96vh}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar">
+    <span>7:32</span>
+    <span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg></span>
+  </div>
+
+  <!-- PAGE 1: Alarm List -->
+  <div id="pageList" class="page page--active">
+    <div class="header"><h1 class="header__title">闹钟</h1><button class="header__action" onclick="navigateTo('pageEdit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button></div>
+    <div class="week-toggle-wrap">
+      <div class="week-toggle" id="weekToggle">
+        <div class="week-toggle__slider" id="weekSlider"></div>
+        <button class="week-toggle__btn week-toggle__btn--active" data-week="single" onclick="setCurrentWeekType('single')">单周<span class="week-toggle__sub">休一天</span></button>
+        <button class="week-toggle__btn" data-week="double" onclick="setCurrentWeekType('double')">双周<span class="week-toggle__sub">休两天</span></button>
+      </div>
+      <div class="week-header-info">
+        <span id="weekDateLabel"></span>
+        <span class="week-header-badge week-header-badge--single" id="weekBadge">本周单周</span>
+      </div>
+    </div>
+    <div class="alarm-list" id="alarmList"></div>
+  </div>
+
+  <!-- PAGE 2: Schedule -->
+  <div id="pageSchedule" class="page page--enter">
+    <div class="header"><h1 class="header__title">日程</h1><div style="width:44px"></div></div>
+    <div class="schedule-month" id="scheduleMonth"></div>
+    <div class="schedule-legend">
+      <span class="schedule-legend-item"><span class="schedule-legend-dot schedule-legend-dot--single"></span> 单休 · 上6天</span>
+      <span class="schedule-legend-item"><span class="schedule-legend-dot schedule-legend-dot--double"></span> 双休 · 上5天</span>
+    </div>
+  </div>
+
+  <!-- PAGE 3: Timer -->
+  <div id="pageTimer" class="page page--enter">
+    <div class="header"><h1 class="header__title">计时器</h1><div style="width:44px"></div></div>
+    <div id="timerInput">
+      <div class="timer-input-picker">
+        <div class="timer-input-group">
+          <div class="timer-input-group__scroll" id="timerHourScroll">
+            <div class="timer-input-group__item" data-th="0">00</div><div class="timer-input-group__item" data-th="1">01</div>
+            <div class="timer-input-group__item timer-input-group__item--selected" data-th="2">02</div>
+            <div class="timer-input-group__item" data-th="3">03</div><div class="timer-input-group__item" data-th="4">04</div>
+            <div class="timer-input-group__item" data-th="5">05</div><div class="timer-input-group__item" data-th="6">06</div>
+            <div class="timer-input-group__item" data-th="7">07</div><div class="timer-input-group__item" data-th="8">08</div>
+            <div class="timer-input-group__item" data-th="9">09</div><div class="timer-input-group__item" data-th="10">10</div>
+            <div class="timer-input-group__item" data-th="11">11</div><div class="timer-input-group__item" data-th="12">12</div>
+            <div class="timer-input-group__item" data-th="13">13</div><div class="timer-input-group__item" data-th="14">14</div>
+            <div class="timer-input-group__item" data-th="15">15</div><div class="timer-input-group__item" data-th="16">16</div>
+            <div class="timer-input-group__item" data-th="17">17</div><div class="timer-input-group__item" data-th="18">18</div>
+            <div class="timer-input-group__item" data-th="19">19</div><div class="timer-input-group__item" data-th="20">20</div>
+            <div class="timer-input-group__item" data-th="21">21</div><div class="timer-input-group__item" data-th="22">22</div>
+            <div class="timer-input-group__item" data-th="23">23</div>
+          </div><span class="timer-input-label">时</span>
+        </div>
+        <span class="timer-colon">:</span>
+        <div class="timer-input-group">
+          <div class="timer-input-group__scroll" id="timerMinScroll">
+            <div class="timer-input-group__item timer-input-group__item--selected" data-tm="0">00</div>
+            <div class="timer-input-group__item" data-tm="1">01</div><div class="timer-input-group__item" data-tm="2">02</div>
+            <div class="timer-input-group__item" data-tm="3">03</div><div class="timer-input-group__item" data-tm="4">04</div>
+            <div class="timer-input-group__item" data-tm="5">05</div><div class="timer-input-group__item" data-tm="10">10</div>
+            <div class="timer-input-group__item" data-tm="15">15</div><div class="timer-input-group__item" data-tm="20">20</div>
+            <div class="timer-input-group__item" data-tm="25">25</div><div class="timer-input-group__item" data-tm="30">30</div>
+            <div class="timer-input-group__item" data-tm="35">35</div><div class="timer-input-group__item" data-tm="40">40</div>
+            <div class="timer-input-group__item" data-tm="45">45</div><div class="timer-input-group__item" data-tm="50">50</div>
+            <div class="timer-input-group__item" data-tm="55">55</div><div class="timer-input-group__item" data-tm="59">59</div>
+          </div><span class="timer-input-label">分</span>
+        </div>
+        <span class="timer-colon">:</span>
+        <div class="timer-input-group">
+          <div class="timer-input-group__scroll" id="timerSecScroll">
+            <div class="timer-input-group__item timer-input-group__item--selected" data-ts="0">00</div>
+            <div class="timer-input-group__item" data-ts="5">05</div><div class="timer-input-group__item" data-ts="10">10</div>
+            <div class="timer-input-group__item" data-ts="15">15</div><div class="timer-input-group__item" data-ts="20">20</div>
+            <div class="timer-input-group__item" data-ts="25">25</div><div class="timer-input-group__item" data-ts="30">30</div>
+            <div class="timer-input-group__item" data-ts="35">35</div><div class="timer-input-group__item" data-ts="40">40</div>
+            <div class="timer-input-group__item" data-ts="45">45</div><div class="timer-input-group__item" data-ts="50">50</div>
+            <div class="timer-input-group__item" data-ts="55">55</div><div class="timer-input-group__item" data-ts="59">59</div>
+          </div><span class="timer-input-label">秒</span>
+        </div>
+      </div>
+      <div class="timer-presets" id="timerPresets">
+        <button class="timer-preset" data-minutes="1">1 分</button>
+        <button class="timer-preset" data-minutes="3">3 分</button>
+        <button class="timer-preset" data-minutes="5">5 分</button>
+        <button class="timer-preset" data-minutes="10">10 分</button>
+        <button class="timer-preset" data-minutes="15">15 分</button>
+        <button class="timer-preset" data-minutes="30">30 分</button>
+        <button class="timer-preset" data-minutes="60">60 分</button>
+      </div>
+    </div>
+    <div id="timerRunning" style="display:none">
+      <div class="timer-circle" style="margin-top:20px">
+        <svg viewBox="0 0 200 200">
+          <defs><linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E8936A"/><stop offset="100%" stop-color="#F5B99A"/></linearGradient></defs>
+          <circle class="timer-circle__bg" cx="100" cy="100" r="90"/>
+          <circle class="timer-circle__progress" id="timerProgress" cx="100" cy="100" r="90" stroke-dasharray="565.48" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-circle__center">
+          <span class="timer-circle__time" id="timerDisplayTime">02:00:00</span>
+          <span class="timer-circle__label" id="timerDisplayLabel">剩余时间</span>
+        </div>
+      </div>
+    </div>
+    <div class="timer-controls" id="timerControlsInput">
+      <div style="width:68px"></div>
+      <button class="timer-btn timer-btn--start" onclick="startTimer()">开始</button>
+      <button class="timer-btn timer-btn--reset" onclick="resetTimer()">重置</button>
+    </div>
+    <div class="timer-controls" id="timerControlsRunning" style="display:none">
+      <button class="timer-btn timer-btn--reset" onclick="resetTimer()">重置</button>
+      <button class="timer-btn timer-btn--pause" id="timerPauseBtn" onclick="pauseTimer()">暂停</button>
+      <button class="timer-btn timer-btn--reset" onclick="resetTimer()">×</button>
+    </div>
+  </div>
+
+  <!-- PAGE 4: Stopwatch -->
+  <div id="pageStopwatch" class="page page--enter">
+    <div class="header"><h1 class="header__title">秒表</h1><div style="width:44px"></div></div>
+    <div class="stopwatch-display"><div class="stopwatch-time" id="swDisplay">00:00</div><div class="stopwatch-sub" id="swSub">00.00</div></div>
+    <div class="stopwatch-controls">
+      <button class="stopwatch-btn stopwatch-btn--lap" id="swLapBtn" onclick="swLap()" disabled>计圈</button>
+      <button class="stopwatch-btn stopwatch-btn--start" id="swStartBtn" onclick="swStart()">开始</button>
+      <button class="stopwatch-btn stopwatch-btn--reset" id="swResetBtn" onclick="swReset()" disabled>重置</button>
+    </div>
+    <div class="stopwatch-laps" id="swLaps"></div>
+  </div>
+
+  <!-- PAGE 5: Settings -->
+  <div id="pageSettings" class="page page--enter">
+    <div class="header"><h1 class="header__title">设置</h1><div style="width:44px"></div></div>
+    <div style="padding:0 var(--margin) 32px;display:flex;flex-direction:column;gap:14px">
+      <div class="edit-section">
+        <div style="padding:16px 20px">
+          <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:12px">本周类型</div>
+          <div class="week-toggle" style="box-shadow:0 2px 8px rgba(44,36,30,0.04)" id="weekToggleSettings">
+            <div class="week-toggle__slider" id="weekSliderSettings"></div>
+            <button class="week-toggle__btn week-toggle__btn--active" data-week="single" onclick="setCurrentWeekType('single')">单周 <span class="week-toggle__sub">休一天</span></button>
+            <button class="week-toggle__btn" data-week="double" onclick="setCurrentWeekType('double')">双周 <span class="week-toggle__sub">休两天</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="edit-section">
+        <div class="edit-row"><span class="edit-row__label">铃声</span><span class="edit-row__value">晨光 ›</span></div>
+        <div class="edit-row"><span class="edit-row__label">闹钟渐响</span><span class="edit-row__value">5 分钟 ›</span></div>
+        <div class="edit-row"><span class="edit-row__label">贪睡间隔</span><span class="edit-row__value">5 分钟 ›</span></div>
+        <div class="edit-row"><span class="edit-row__label">音量</span><span class="edit-row__value">80% ›</span></div>
+      </div>
+      <div class="edit-section">
+        <div class="edit-row"><span class="edit-row__label">深色模式</span><span class="edit-row__value">跟随系统 ›</span></div>
+        <div class="edit-row"><span class="edit-row__label">24小时制</span><span class="edit-row__value">关闭 ›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 6: Add/Edit -->
+  <div id="pageEdit" class="page page--enter">
+    <div class="edit-header">
+      <button class="edit-header__back" onclick="navigateTo('pageList')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15,18 9,12 15,6"/></svg></button>
+      <span class="edit-header__title">新建闹钟</span>
+      <button class="edit-header__save" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg></button>
+    </div>
+    <div class="time-picker">
+      <div class="time-picker__col"><div class="time-picker__scroll" id="editHourScroll"><div class="time-picker__item" data-hour="11">11</div><div class="time-picker__item" data-hour="12">12</div><div class="time-picker__item" data-hour="1">1</div><div class="time-picker__item time-picker__item--selected" data-hour="7">7</div><div class="time-picker__item" data-hour="8">8</div><div class="time-picker__item" data-hour="9">9</div><div class="time-picker__item" data-hour="10">10</div></div></div>
+      <div class="time-picker__sep">:</div>
+      <div class="time-picker__col"><div class="time-picker__scroll" id="editMinScroll"><div class="time-picker__item time-picker__item--selected" data-minute="00">00</div><div class="time-picker__item" data-minute="05">05</div><div class="time-picker__item" data-minute="10">10</div><div class="time-picker__item" data-minute="15">15</div><div class="time-picker__item" data-minute="20">20</div><div class="time-picker__item" data-minute="25">25</div><div class="time-picker__item" data-minute="30">30</div><div class="time-picker__item" data-minute="35">35</div><div class="time-picker__item" data-minute="40">40</div><div class="time-picker__item" data-minute="45">45</div><div class="time-picker__item" data-minute="50">50</div><div class="time-picker__item" data-minute="55">55</div></div></div>
+      <div class="time-picker__ampm-wrap"><button class="time-picker__ampm-btn time-picker__ampm-btn--active" data-ampm="AM">上午</button><button class="time-picker__ampm-btn" data-ampm="PM">下午</button></div>
+    </div>
+    <div class="edit-form">
+      <div class="edit-section">
+        <div class="edit-row"><span class="edit-row__label">重复</span><span class="edit-row__value" id="editRepeatDisplay">每周 ›</span></div>
+        <div class="repeat-options" id="editRepeatOptions">
+          <button class="repeat-chip repeat-chip--active" data-repeat="weekly">每周</button>
+          <button class="repeat-chip" data-repeat="single">仅单周</button>
+          <button class="repeat-chip" data-repeat="double">仅双周</button>
+          <button class="repeat-chip" data-repeat="once">仅一次</button>
+        </div>
+        <div class="edit-row"><span class="edit-row__label">标签</span><span class="edit-row__value" style="color:var(--text-primary);font-weight:400">起床 ›</span></div>
+        <div class="edit-row"><span class="edit-row__label">铃声</span><span class="edit-row__value">晨光 ›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 7: Ringing -->
+  <div id="pageRinging" class="page page--enter ringing-screen">
+    <div class="sunrise"></div>
+    <div class="ringing-content">
+      <div class="ringing-label">⏰ 闹钟</div>
+      <div class="ringing-time">7:30</div>
+      <div class="ringing-ampm">上午</div>
+      <div class="ringing-badge">每周 · 起床</div>
+      <div class="ringing-actions">
+        <button class="ringing-btn ringing-btn--snooze" onclick="navigateTo('pageList')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2l6 3"/></svg>贪睡
+        </button>
+        <button class="ringing-btn ringing-btn--dismiss" onclick="navigateTo('pageList')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-bar">
+    <button class="nav-btn nav-btn--active" data-nav="pageList" onclick="navigateTo('pageList')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 6.5c-3.5 0-6.5 2-8 5 1.5 3 4.5 5 8 5s6.5-2 8-5c-1.5-3-4.5-5-8-5zm0 8.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 8 12 8s3.5 1.57 3.5 3.5S13.93 15 12 15zm0-5.5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg><span>闹钟</span>
+    </button>
+    <button class="nav-btn" data-nav="pageSchedule" onclick="navigateTo('pageSchedule');renderSchedule()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="2" x2="9" y2="6"/><line x1="15" y1="2" x2="15" y2="6"/></svg><span>日程</span>
+    </button>
+    <button class="nav-btn" data-nav="pageTimer" onclick="navigateTo('pageTimer')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg><span>计时</span>
+    </button>
+    <button class="nav-btn" data-nav="pageStopwatch" onclick="navigateTo('pageStopwatch')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/><path d="M9 2l6 3"/></svg><span>秒表</span>
+    </button>
+    <button class="nav-btn" data-nav="pageSettings" onclick="navigateTo('pageSettings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>设置</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ===== WEEK SCHEDULE ENGINE =====
+  let weekOverrides = {}; // key: "YYYY-WW" → 'single'|'double'
+  let currentWeekType = 'single';
+
+  function getWeekInfo(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    const year = monday.getFullYear();
+    const firstJan = new Date(year, 0, 1);
+    const days = Math.floor((monday - firstJan) / 86400000);
+    const weekNum = Math.ceil((days + firstJan.getDay() + 1) / 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return {
+      monday, sunday, weekNum,
+      key: `${year}-${String(weekNum).padStart(2,'0')}`,
+      label: `${monday.getMonth()+1}/${monday.getDate()} - ${sunday.getMonth()+1}/${sunday.getDate()}`
+    };
+  }
+
+  function getCurrentWeekInfo() {
+    return getWeekInfo(new Date());
+  }
+
+  function getMonthWeeks(year, month) {
+    const weeks = [];
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
+    let cursor = new Date(first);
+    cursor.setDate(first.getDate() - (first.getDay() === 0 ? 6 : first.getDay() - 1));
+    while (cursor <= last) {
+      const info = getWeekInfo(cursor);
+      weeks.push(info);
+      cursor.setDate(cursor.getDate() + 7);
+      if (weeks.length > 8) break;
+    }
+    return weeks;
+  }
+
+  function resolveWeekType(key) {
+    if (weekOverrides[key]) return weekOverrides[key];
+    const cur = getCurrentWeekInfo();
+    if (key === cur.key) return currentWeekType;
+    const [y1, w1] = cur.key.split('-').map(Number);
+    const [y2, w2] = key.split('-').map(Number);
+    const diff = (y2 * 52 + w2) - (y1 * 52 + w1);
+    return diff % 2 === 0 ? currentWeekType : (currentWeekType === 'single' ? 'double' : 'single');
+  }
+
+  function setCurrentWeekType(type) {
+    currentWeekType = type;
+    [document.getElementById('weekToggle'), document.getElementById('weekToggleSettings')].forEach(t => {
+      if (!t) return;
+      const slider = t.querySelector('.week-toggle__slider');
+      t.querySelectorAll('.week-toggle__btn').forEach(b =>
+        b.classList.toggle('week-toggle__btn--active', b.dataset.week === type));
+      if (slider) slider.classList.toggle('right', type === 'double');
+    });
+    const badge = document.getElementById('weekBadge');
+    if (type === 'single') {
+      badge.textContent = '本周单周';
+      badge.className = 'week-header-badge week-header-badge--single';
+    } else {
+      badge.textContent = '本周双周';
+      badge.className = 'week-header-badge week-header-badge--double';
+    }
+    renderAlarms();
+  }
+
+  function toggleWeekType(key) {
+    const current = resolveWeekType(key);
+    const next = current === 'single' ? 'double' : 'single';
+    if (weekOverrides[key] === next) {
+      delete weekOverrides[key]; // revert to auto
+    } else {
+      weekOverrides[key] = next;
+    }
+    const cur = getCurrentWeekInfo();
+    if (key === cur.key) setCurrentWeekType(resolveWeekType(key));
+    renderSchedule();
+  }
+
+  // ===== SCHEDULE VIEW =====
+  let scheduleMonthOffset = 0;
+
+  function renderSchedule() {
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth() + scheduleMonthOffset, 1);
+    const year = target.getFullYear(), month = target.getMonth();
+    const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const weeks = getMonthWeeks(year, month);
+    const cur = getCurrentWeekInfo();
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    let html = `<div class="schedule-month-header">
+        <button class="header__nav-btn" onclick="scheduleMonthOffset--;renderSchedule()">‹</button>
+        <span class="schedule-month-title">${year}年 ${monthNames[month]}</span>
+        <button class="header__nav-btn" onclick="scheduleMonthOffset++;renderSchedule()">›</button>
+      </div>`;
+
+    weeks.forEach(w => {
+      const type = resolveWeekType(w.key);
+      const isCurrent = w.key === cur.key;
+      const isOverridden = weekOverrides[w.key] !== undefined;
+      const workDays = type === 'single' ? '上6天 · 周日休' : '上5天 · 六日休';
+      html += `<div class="schedule-week ${isCurrent?'schedule-week--today':''}">
+          <span class="schedule-week__num">第${w.weekNum}周</span>
+          <div class="schedule-week__info" onclick="toggleWeekType('${w.key}')">
+            <span class="schedule-week__dates">${w.label}</span>
+            <span class="schedule-week__work-status">${workDays}</span>
+          </div>
+          <div class="schedule-week__toggle-wrap" onclick="toggleWeekType('${w.key}')">
+            <span class="schedule-week__type-btn ${type==='single'?'schedule-week__type-btn--single':'schedule-week__type-btn--double'}">
+              ${type==='single'?'单周':'双周'}
+            </span>
+            ${isOverridden ? '<span class="schedule-week__override-badge">调</span>' : ''}
+          </div>
+        </div>`;
+    });
+    document.getElementById('scheduleMonth').innerHTML = html;
+  }
+
+  // ===== ALARM LIST =====
+  const alarmData = [
+    { id:1, hour:7, minute:30, ampm:'AM', label:'起床', repeat:'weekly', on:true },
+    { id:2, hour:8, minute:0, ampm:'AM', label:'通勤提醒', repeat:'single', on:true },
+    { id:3, hour:22, minute:0, ampm:'PM', label:'睡前准备', repeat:'double', on:false },
+  ];
+  let alarms = JSON.parse(JSON.stringify(alarmData));
+
+  const repeatMap = {
+    weekly:{text:'每周',cls:'alarm-card__badge--weekly'},
+    single:{text:'单周',cls:'alarm-card__badge--single'},
+    double:{text:'双周',cls:'alarm-card__badge--double'},
+    once:{text:'仅一次',cls:'alarm-card__badge--weekly'},
+  };
+
+  function renderAlarms() {
+    const el = document.getElementById('alarmList');
+    el.innerHTML = alarms.map((a,i) => {
+      const r = repeatMap[a.repeat]||repeatMap.weekly;
+      const dh = a.ampm==='PM'&&a.hour!==12 ? a.hour-12 : a.ampm==='AM'&&a.hour===12 ? 12 : a.hour;
+      const isActive = a.repeat === 'weekly' || a.repeat === 'once' || a.repeat === currentWeekType;
+      return `<div class="alarm-card ${a.on?'':'alarm-card--off'}" style="animation-delay:${i*0.06}s" onclick="triggerAlarm(${a.id})">
+        <div class="alarm-card__top">
+          <div class="alarm-card__time-wrap">
+            <span class="alarm-card__time">${dh}:${String(a.minute).padStart(2,'0')}</span>
+            <span class="alarm-card__ampm">${a.ampm==='AM'?'上午':'下午'}</span>
+          </div>
+          <label class="alarm-card__toggle" onclick="event.stopPropagation()">
+            <input type="checkbox" ${a.on?'checked':''} onchange="toggleAlarm(${a.id},this.checked)"><span class="slider"></span>
+          </label>
+        </div>
+        <div class="alarm-card__bottom">
+          <span class="alarm-card__label">${a.label}</span>
+          <span class="alarm-card__badge ${r.cls}${isActive?'':' alarm-card__badge--inactive'}">${r.text}</span>
+        </div>
+      </div>`;
+    }).join('');
+    if (!alarms.length) {
+      el.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg><p>还没有闹钟，点右上角新建一个</p></div>';
+    }
+  }
+
+  function toggleAlarm(id, on) {
+    const a = alarms.find(x => x.id === id);
+    if (a) a.on = on;
+  }
+
+  function triggerAlarm(id) {
+    const a = alarms.find(x => x.id === id);
+    if (!a || !a.on) return;
+    const dh = a.ampm==='PM'&&a.hour!==12?a.hour-12:a.ampm==='AM'&&a.hour===12?12:a.hour;
+    const r = repeatMap[a.repeat]||repeatMap.weekly;
+    document.querySelector('#pageRinging .ringing-time').textContent = `${dh}:${String(a.minute).padStart(2,'0')}`;
+    document.querySelector('#pageRinging .ringing-ampm').textContent = a.ampm==='AM'?'上午':'下午';
+    document.querySelector('#pageRinging .ringing-badge').textContent = `${r.text} · ${a.label}`;
+    navigateTo('pageRinging');
+  }
+
+  // ===== TIMER =====
+  let timerState='idle', timerTotal=0, timerRemaining=0, timerInterval=null;
+  const CIRCUMFERENCE=565.48;
+
+  function getTimerValues() {
+    function g(id, attr) {
+      const el = document.getElementById(id);
+      const sel = el?.querySelector('.timer-input-group__item--selected');
+      return parseInt(sel?.getAttribute(attr) || '0');
+    }
+    return {hours:g('timerHourScroll','data-th'), minutes:g('timerMinScroll','data-tm'), seconds:g('timerSecScroll','data-ts')};
+  }
+
+  function applyPreset(min) {
+    const total = min * 60;
+    const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+    ['timerHourScroll','timerMinScroll','timerSecScroll'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const vals = [h, m, s], attrs = ['data-th','data-tm','data-ts'];
+      el.querySelectorAll('.timer-input-group__item').forEach(item => {
+        item.classList.toggle('timer-input-group__item--selected', parseInt(item.getAttribute(attrs[i])) === vals[i]);
+      });
+    });
+    document.querySelectorAll('.timer-preset').forEach(p =>
+      p.classList.toggle('timer-preset--active', parseInt(p.dataset.minutes) === min));
+  }
+
+  function startTimer() {
+    if (timerState === 'idle') {
+      const v = getTimerValues();
+      timerTotal = v.hours * 3600 + v.minutes * 60 + v.seconds;
+      if (timerTotal <= 0) return;
+      timerRemaining = timerTotal;
+    }
+    timerState = 'running';
+    document.getElementById('timerInput').style.display = 'none';
+    document.getElementById('timerRunning').style.display = 'block';
+    document.getElementById('timerControlsInput').style.display = 'none';
+    document.getElementById('timerControlsRunning').style.display = 'flex';
+    document.getElementById('timerPauseBtn').textContent = '暂停';
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timerRemaining = Math.max(0, timerRemaining - 0.1);
+      updateTimerDisplay();
+      if (timerRemaining <= 0) {
+        clearInterval(timerInterval); timerInterval = null; timerState = 'idle';
+        document.getElementById('timerDisplayLabel').textContent = '⏰ 时间到！';
+      }
+    }, 100);
+  }
+
+  function pauseTimer() {
+    if (timerState === 'running') {
+      clearInterval(timerInterval); timerInterval = null; timerState = 'paused';
+      document.getElementById('timerPauseBtn').textContent = '继续';
+    } else if (timerState === 'paused') {
+      timerState = 'running';
+      document.getElementById('timerPauseBtn').textContent = '暂停';
+      timerInterval = setInterval(() => {
+        timerRemaining = Math.max(0, timerRemaining - 0.1);
+        updateTimerDisplay();
+        if (timerRemaining <= 0) {
+          clearInterval(timerInterval); timerInterval = null; timerState = 'idle';
+          document.getElementById('timerDisplayLabel').textContent = '⏰ 时间到！';
+        }
+      }, 100);
+    }
+  }
+
+  function resetTimer() {
+    clearInterval(timerInterval); timerInterval = null; timerState = 'idle';
+    timerTotal = 0; timerRemaining = 0;
+    document.getElementById('timerInput').style.display = 'block';
+    document.getElementById('timerRunning').style.display = 'none';
+    document.getElementById('timerControlsInput').style.display = 'flex';
+    document.getElementById('timerControlsRunning').style.display = 'none';
+    document.getElementById('timerDisplayLabel').textContent = '剩余时间';
+    document.getElementById('timerProgress').style.strokeDashoffset = '0';
+  }
+
+  function updateTimerDisplay() {
+    const t = Math.ceil(timerRemaining);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    document.getElementById('timerDisplayTime').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (timerTotal > 0) {
+      document.getElementById('timerProgress').style.strokeDashoffset = String(CIRCUMFERENCE * (1 - timerRemaining / timerTotal));
+    }
+  }
+
+  // ===== STOPWATCH =====
+  let swRunning=false, swTime=0, swInterval=null, swLapsData=[], swStartTime=0;
+
+  function swFmt(s) {
+    return {main:`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`, sub:String(Math.floor((s%1)*100)).padStart(2,'0')};
+  }
+
+  function swStart() {
+    if (!swRunning) {
+      swRunning = true; swStartTime = Date.now() - swTime * 1000;
+      document.getElementById('swStartBtn').textContent = '停止';
+      document.getElementById('swStartBtn').className = 'stopwatch-btn stopwatch-btn--pause';
+      document.getElementById('swLapBtn').disabled = false;
+      document.getElementById('swResetBtn').disabled = true;
+      swInterval = setInterval(() => {
+        swTime = (Date.now() - swStartTime) / 1000;
+        const f = swFmt(swTime);
+        document.getElementById('swDisplay').textContent = f.main;
+        document.getElementById('swSub').textContent = f.sub;
+      }, 20);
+    } else {
+      swRunning = false; clearInterval(swInterval); swInterval = null;
+      document.getElementById('swStartBtn').textContent = '继续';
+      document.getElementById('swStartBtn').className = 'stopwatch-btn stopwatch-btn--start';
+      document.getElementById('swResetBtn').disabled = false;
+      document.getElementById('swLapBtn').disabled = true;
+    }
+  }
+
+  function swLap() {
+    if (!swRunning) return;
+    const prev = swLapsData.length ? swLapsData[swLapsData.length-1].time : 0;
+    swLapsData.push({time: swTime, diff: swTime - prev});
+    renderLaps();
+  }
+
+  function swReset() {
+    swRunning = false; clearInterval(swInterval); swInterval = null;
+    swTime = 0; swLapsData = [];
+    document.getElementById('swDisplay').textContent = '00:00';
+    document.getElementById('swSub').textContent = '00.00';
+    document.getElementById('swStartBtn').textContent = '开始';
+    document.getElementById('swStartBtn').className = 'stopwatch-btn stopwatch-btn--start';
+    document.getElementById('swLapBtn').disabled = true;
+    document.getElementById('swResetBtn').disabled = true;
+    document.getElementById('swLaps').innerHTML = '';
+  }
+
+  function renderLaps() {
+    document.getElementById('swLaps').innerHTML =
+      swLapsData.map((l,i) => {
+        const f = swFmt(l.time), d = swFmt(l.diff);
+        return `<div class="stopwatch-lap"><span class="stopwatch-lap__num">计圈 ${i+1}</span><span class="stopwatch-lap__diff">+${d.main}.${d.sub}</span><span class="stopwatch-lap__time">${f.main}.${f.sub}</span></div>`;
+      }).reverse().join('');
+  }
+
+  // ===== NAVIGATION =====
+  let currentPage = 'pageList';
+
+  function navigateTo(pageId) {
+    const prev = document.getElementById(currentPage);
+    const next = document.getElementById(pageId);
+    if (!prev || !next || prev === next) return;
+    prev.classList.remove('page--active','page--enter');
+    prev.classList.add('page--exit');
+    next.classList.remove('page--enter','page--exit');
+    void next.offsetWidth;
+    next.classList.add('page--active');
+    currentPage = pageId;
+    document.querySelectorAll('.nav-btn').forEach(b =>
+      b.classList.toggle('nav-btn--active', b.dataset.nav === pageId));
+    setTimeout(() => prev.classList.remove('page--exit'), 500);
+  }
+
+  // ===== INIT =====
+  const cur = getCurrentWeekInfo();
+  document.getElementById('weekDateLabel').textContent = `第${cur.weekNum}周 · ${cur.label}`;
+  setCurrentWeekType('single');
+  renderAlarms();
+  renderSchedule();
+
+  ['pageRinging','pageEdit','pageTimer','pageStopwatch','pageSettings','pageSchedule'].forEach(id => {
+    const p = document.getElementById(id);
+    if (p && id !== 'pageList') p.classList.add('page--enter');
+  });
+
+  // Timer scroll snap listeners
+  ['timerHourScroll','timerMinScroll','timerSecScroll'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('scroll', () => {
+      const items = el.querySelectorAll('.timer-input-group__item');
+      const rect = el.getBoundingClientRect();
+      let closest = null, minDist = Infinity;
+      items.forEach(item => {
+        const ir = item.getBoundingClientRect();
+        const d = Math.abs(ir.top + ir.height/2 - rect.top - rect.height/2);
+        if (d < minDist) { minDist = d; closest = item; }
+      });
+      items.forEach(i => i.classList.remove('timer-input-group__item--selected'));
+      if (closest) closest.classList.add('timer-input-group__item--selected');
+      document.querySelectorAll('.timer-preset').forEach(p => p.classList.remove('timer-preset--active'));
+    });
+  });
+
+  document.querySelectorAll('.timer-preset').forEach(p =>
+    p.addEventListener('click', () => applyPreset(parseInt(p.dataset.minutes))));
+
+  document.querySelectorAll('.time-picker__ampm-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.parentElement.querySelectorAll('.time-picker__ampm-btn').forEach(b => b.classList.remove('time-picker__ampm-btn--active'));
+      this.classList.add('time-picker__ampm-btn--active');
+    });
+  });
+
+  document.querySelectorAll('#editRepeatOptions .repeat-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      this.parentElement.querySelectorAll('.repeat-chip').forEach(c => c.classList.remove('repeat-chip--active'));
+      this.classList.add('repeat-chip--active');
+      const labels = {weekly:'每周', single:'仅单周', double:'仅双周', once:'仅一次'};
+      document.getElementById('editRepeatDisplay').textContent = (labels[this.dataset.repeat] || '每周') + ' ›';
+    });
+  });
+</script>
+</body>
+</html>
