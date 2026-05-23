@@ -1,12 +1,17 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/alarm_info.dart';
+import 'holiday_service.dart';
+import 'schedule_storage_service.dart';
 
 class AlarmStorageService {
   static const String _dbName = 'alarm_clock.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 4;
   static const String _tableName = 'alarms';
 
   static late Database _db;
+
+  /// Expose the database instance for other services that share the same DB.
+  static Database get database => _db;
 
   static Future<void> init({String? databasePath}) async {
     final path = databasePath ?? await getDatabasesPath();
@@ -25,20 +30,42 @@ class AlarmStorageService {
             vibrate INTEGER NOT NULL,
             snoozeMinutes INTEGER NOT NULL,
             isEnabled INTEGER NOT NULL,
-            ringtone TEXT NOT NULL DEFAULT '默认',
+            ringtone TEXT NOT NULL DEFAULT 'default',
+            ringtoneTitle TEXT NOT NULL DEFAULT '默认',
             createdAt INTEGER NOT NULL,
             updatedAt INTEGER NOT NULL
           )
         ''');
+        // Create holiday cache table for new installs
+        await HolidayService.createTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
-            "ALTER TABLE $_tableName ADD COLUMN ringtone TEXT NOT NULL DEFAULT '默认'",
+            "ALTER TABLE $_tableName ADD COLUMN ringtone TEXT NOT NULL DEFAULT 'default'",
           );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE $_tableName ADD COLUMN ringtoneTitle TEXT NOT NULL DEFAULT '默认'",
+          );
+          // Migrate old ringtone names to URI format
+          await db.execute(
+            "UPDATE $_tableName SET ringtone = 'default' WHERE ringtone = '默认'",
+          );
+        }
+        if (oldVersion < 4) {
+          // Create holiday cache table
+          await HolidayService.createTable(db);
         }
       },
     );
+
+    // Share the database with HolidayService
+    HolidayService.setDatabase(_db);
+    // Share the database with ScheduleStorageService (same DB, avoids opening a second connection)
+    ScheduleStorageService.setDatabase(_db);
+    await ScheduleStorageService.init();
   }
 
   static Future<int> insert(AlarmInfo alarm) async {

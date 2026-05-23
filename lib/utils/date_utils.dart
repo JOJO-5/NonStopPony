@@ -15,26 +15,86 @@ WeekType autoWeekType(DateTime date) {
   return weekNumber(date).isOdd ? WeekType.single : WeekType.double;
 }
 
-/// Resolve week type: override takes priority, fallback to auto.
+/// Resolve week type with **chain-linkage** logic:
+///
+/// Overrides form "anchor points" in the single↔double chain.
+/// Between two overrides, weeks alternate starting from the first override.
+/// Before any override, fall back to simple odd/even parity.
+///
+/// Example: overrides at week 5=single, week 10=double
+///   weeks 1-4: auto parity
+///   week 5: single (override)
+///   week 6: double (chain from week 5)
+///   week 7: single (chain from week 5)
+///   week 8: double (chain from week 5)
+///   week 9: single (chain from week 5)
+///   week 10: double (override) ← breaks the chain
+///   week 11: single (chain from week 10)
+///   ...
 WeekType resolveWeekType(DateTime date, List<WeekSchedule> overrides) {
-  final weekOfMonth = ((date.day - 1) ~/ 7) + 1;
-  final override = overrides.cast<WeekSchedule?>().firstWhere(
-    (o) =>
-        o!.year == date.year && o.month == date.month && o.weekOfMonth == weekOfMonth,
+  final wn = weekNumber(date);
+
+  // Check if there's an override for this exact week
+  final exactOverride = overrides.cast<WeekSchedule?>().firstWhere(
+    (o) => o!.weekIndex == wn,
     orElse: () => null,
   );
-  return override?.weekType ?? autoWeekType(date);
+  if (exactOverride != null) return exactOverride.weekType;
+
+  // Find the nearest override BEFORE this week (the "anchor")
+  final priorOverrides = overrides
+      .where((o) => o.weekIndex < wn)
+      .toList()
+    ..sort((a, b) => b.weekIndex.compareTo(a.weekIndex)); // descending
+
+  if (priorOverrides.isNotEmpty) {
+    final anchor = priorOverrides.first;
+    final distance = wn - anchor.weekIndex;
+    // Alternate from anchor: even distance = same type, odd distance = opposite
+    if (distance.isEven) {
+      return anchor.weekType;
+    } else {
+      return anchor.weekType == WeekType.single
+          ? WeekType.double
+          : WeekType.single;
+    }
+  }
+
+  // No prior override → fall back to simple odd/even parity
+  return autoWeekType(date);
 }
 
 /// Core function: should this alarm ring on this date?
+///
+/// Integrates with:
+/// 1. Holiday API — statutory holidays don't ring, make-up workdays (补班) ring
+/// 2. Week schedule overrides — singleRest weeks ring on Saturday
+/// 3. Standard repeat rules
+///
+/// [holidayInfo] is optional; if null, no holiday logic is applied.
 bool shouldRingOnDate(
-    AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides) {
+    AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides,
+    {bool? isHoliday, bool? isWorkday}) {
   if (!alarm.isEnabled) return false;
+
+  // ── Holiday/workday override (highest priority) ──
+  // If this day is a statutory holiday (假期), never ring
+  if (isHoliday == true) return false;
+  // If this day is a make-up workday (补班), always ring
+  if (isWorkday == true) return true;
 
   switch (alarm.repeatType) {
     case RepeatType.once:
+      // If weekdays are specified, only ring on those weekdays
+      if (alarm.weekdays.isNotEmpty) {
+        return alarm.weekdays.contains(date.weekday);
+      }
       return true;
     case RepeatType.daily:
+      // Daily respects weekdays if specified; otherwise rings every day
+      if (alarm.weekdays.isNotEmpty) {
+        return alarm.weekdays.contains(date.weekday);
+      }
       return true;
     case RepeatType.weekdays:
       return date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
@@ -62,11 +122,35 @@ DateTime? nextAlarmDate(
   AlarmInfo alarm,
   List<WeekSchedule> overrides, {
   DateTime? from,
+  Future<bool> Function(DateTime)? isHolidayFn,
+  Future<bool> Function(DateTime)? isWorkdayFn,
 }) {
   final start = from ?? DateTime.now();
   for (int i = 0; i < 365; i++) {
     final candidate = DateTime(start.year, start.month, start.day + i);
+    // For synchronous version without holiday check
     if (shouldRingOnDate(alarm, candidate, overrides)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/// Async version: find next alarm date with holiday/workday checks.
+Future<DateTime?> nextAlarmDateAsync(
+  AlarmInfo alarm,
+  List<WeekSchedule> overrides, {
+  DateTime? from,
+  required Future<bool?> Function(DateTime) isHolidayFn,
+  required Future<bool?> Function(DateTime) isWorkdayFn,
+}) async {
+  final start = from ?? DateTime.now();
+  for (int i = 0; i < 365; i++) {
+    final candidate = DateTime(start.year, start.month, start.day + i);
+    final isH = await isHolidayFn(candidate);
+    final isW = await isWorkdayFn(candidate);
+    if (shouldRingOnDate(alarm, candidate, overrides,
+        isHoliday: isH, isWorkday: isW)) {
       return candidate;
     }
   }

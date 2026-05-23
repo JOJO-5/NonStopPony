@@ -14,6 +14,7 @@ void main() {
 
   testWidgets('WeekSchedule model smoke test', (WidgetTester tester) async {
     final schedule = WeekSchedule(
+      weekIndex: 1,
       year: 2026,
       month: 5,
       weekOfMonth: 3,

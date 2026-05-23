@@ -11,6 +11,8 @@ void main() {
   });
 
   setUp(() async {
+    final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+    ScheduleStorageService.setDatabase(db);
     await ScheduleStorageService.init();
     await ScheduleStorageService.deleteAll();
   });
@@ -22,6 +24,7 @@ void main() {
   group('ScheduleStorageService', () {
     test('insert + getByKey returns the inserted entry', () async {
       final entry = WeekSchedule(
+        weekIndex: 1,
         year: 2025,
         month: 6,
         weekOfMonth: 1,
@@ -40,8 +43,8 @@ void main() {
     });
 
     test('insert + getByMonth returns matching entries', () async {
-      final entry1 = WeekSchedule(year: 2025, month: 7, weekOfMonth: 1, weekType: WeekType.single);
-      final entry2 = WeekSchedule(year: 2025, month: 7, weekOfMonth: 3, weekType: WeekType.double);
+      final entry1 = WeekSchedule(weekIndex: 2, year: 2025, month: 7, weekOfMonth: 1, weekType: WeekType.single);
+      final entry2 = WeekSchedule(weekIndex: 3, year: 2025, month: 7, weekOfMonth: 3, weekType: WeekType.double);
       await ScheduleStorageService.insert(entry1);
       await ScheduleStorageService.insert(entry2);
 
@@ -56,7 +59,7 @@ void main() {
     });
 
     test('update modifies existing entry', () async {
-      final entry = WeekSchedule(year: 2025, month: 8, weekOfMonth: 2, weekType: WeekType.double);
+      final entry = WeekSchedule(weekIndex: 4, year: 2025, month: 8, weekOfMonth: 2, weekType: WeekType.double);
       final id = await ScheduleStorageService.insert(entry);
 
       final updated = entry.copyWith(id: id, weekType: WeekType.single);
@@ -68,7 +71,7 @@ void main() {
     });
 
     test('delete removes entry by id', () async {
-      final entry = WeekSchedule(year: 2025, month: 9, weekOfMonth: 1, weekType: WeekType.single);
+      final entry = WeekSchedule(weekIndex: 5, year: 2025, month: 9, weekOfMonth: 1, weekType: WeekType.single);
       final id = await ScheduleStorageService.insert(entry);
 
       final rowsAffected = await ScheduleStorageService.delete(id);
@@ -79,7 +82,7 @@ void main() {
     });
 
     test('deleteByKey removes entry by natural key', () async {
-      final entry = WeekSchedule(year: 2025, month: 10, weekOfMonth: 4, weekType: WeekType.double);
+      final entry = WeekSchedule(weekIndex: 6, year: 2025, month: 10, weekOfMonth: 4, weekType: WeekType.double);
       await ScheduleStorageService.insert(entry);
 
       final rowsAffected = await ScheduleStorageService.deleteByKey(2025, 10, 4);
@@ -90,11 +93,11 @@ void main() {
     });
 
     test('upsert replaces existing entry for same natural key', () async {
-      final entry1 = WeekSchedule(year: 2025, month: 11, weekOfMonth: 1, weekType: WeekType.single);
+      final entry1 = WeekSchedule(weekIndex: 7, year: 2025, month: 11, weekOfMonth: 1, weekType: WeekType.single);
       await ScheduleStorageService.insert(entry1);
 
       // Upsert with same key but different weekType
-      final entry2 = WeekSchedule(year: 2025, month: 11, weekOfMonth: 1, weekType: WeekType.double);
+      final entry2 = WeekSchedule(weekIndex: 8, year: 2025, month: 11, weekOfMonth: 1, weekType: WeekType.double);
       await ScheduleStorageService.upsert(entry2);
 
       final retrieved = await ScheduleStorageService.getByKey(2025, 11, 1);
@@ -102,7 +105,7 @@ void main() {
     });
 
     test('upsert inserts when key does not exist', () async {
-      final entry = WeekSchedule(year: 2025, month: 12, weekOfMonth: 1, weekType: WeekType.double);
+      final entry = WeekSchedule(weekIndex: 9, year: 2025, month: 12, weekOfMonth: 1, weekType: WeekType.double);
       await ScheduleStorageService.upsert(entry);
 
       final retrieved = await ScheduleStorageService.getByKey(2025, 12, 1);
@@ -110,10 +113,10 @@ void main() {
       expect(retrieved!.weekType, WeekType.double);
     });
 
-    test('getAll returns all entries ordered by year, month, weekOfMonth', () async {
-      await ScheduleStorageService.insert(WeekSchedule(year: 2025, month: 3, weekOfMonth: 2, weekType: WeekType.single));
-      await ScheduleStorageService.insert(WeekSchedule(year: 2025, month: 1, weekOfMonth: 1, weekType: WeekType.double));
-      await ScheduleStorageService.insert(WeekSchedule(year: 2026, month: 1, weekOfMonth: 1, weekType: WeekType.single));
+    test('getAll returns all entries ordered by weekIndex, year, month, weekOfMonth', () async {
+      await ScheduleStorageService.insert(WeekSchedule(weekIndex: 10, year: 2025, month: 1, weekOfMonth: 1, weekType: WeekType.double));
+      await ScheduleStorageService.insert(WeekSchedule(weekIndex: 11, year: 2025, month: 3, weekOfMonth: 2, weekType: WeekType.single));
+      await ScheduleStorageService.insert(WeekSchedule(weekIndex: 12, year: 2026, month: 1, weekOfMonth: 1, weekType: WeekType.single));
 
       final all = await ScheduleStorageService.getAll();
       expect(all.length, 3);

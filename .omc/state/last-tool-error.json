@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"flutter analyze 2>&1\",\"timeout\":120000,\"description\":\"Run flutter analyze to check for compilation errors\"}",
+  "error": "Exit code 1\nFlutter assets will be downloaded from https://storage.flutter-io.cn. Make sure you trust this source!\nAnalyzing alarm_clock...                                        \n\nwarning - The value of the field '_startedAt' isn't used - lib\\providers\\timer_provider.dart:11:13 - unused_field\nwarning - The value of the field '_elapsedSeconds' isn't used - lib\\providers\\timer_provider.dart:12:7 - unused_field\n   info - Don't invoke 'print' in production code - lib\\screens\\settings_screen.dart:20...",
+  "timestamp": "2026-05-21T15:04:47.032Z",
+  "retry_count": 1
+}

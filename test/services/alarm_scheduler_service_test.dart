@@ -3,11 +3,11 @@ import 'package:alarm_clock/models/alarm_info.dart';
 import 'package:alarm_clock/models/week_schedule.dart';
 import 'package:alarm_clock/services/alarm_scheduler_service.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tzData;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 void main() {
   setUp(() {
-    tzData.initializeTimeZones();
+    tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
     TestWidgetsFlutterBinding.ensureInitialized();
   });
@@ -28,7 +28,6 @@ void main() {
       });
 
       test('once: returns today if time just passed (within same day tolerance)', () async {
-        final alarm = AlarmInfo.create(hour: 0, minute: 0, repeatType: RepeatType.once);
         final now = DateTime.now();
 
         // Use a time that's guaranteed to be in the future today
@@ -108,6 +107,7 @@ void main() {
         final now = DateTime.now();
         final weekOfMonth = ((now.day - 1) ~/ 7) + 1;
         final override = WeekSchedule(
+          weekIndex: 1,
           year: now.year,
           month: now.month,
           weekOfMonth: weekOfMonth,
@@ -127,23 +127,11 @@ void main() {
       test('doubleRest: never rings on weekends', () async {
         final alarm = AlarmInfo.create(hour: 9, minute: 0, repeatType: RepeatType.doubleRest);
 
-        // Run through many days to ensure we find a weekday
-        var current = DateTime.now();
-        DateTime? weekdayResult;
-
-        for (int i = 0; i < 30; i++) {
-          final candidate = current.add(Duration(days: i));
-          if (candidate.weekday != DateTime.saturday &&
-              candidate.weekday != DateTime.sunday) {
-            weekdayResult = candidate;
-            break;
-          }
-        }
-
         final result = await AlarmSchedulerService.calculateNextTrigger(alarm);
         expect(result, isNotNull);
-        expect(result!.weekday, isNot(DateTime.saturday));
-        expect(result!.weekday, isNot(DateTime.sunday));
+        final DateTime next = result!;
+        expect(next.weekday, isNot(DateTime.saturday));
+        expect(next.weekday, isNot(DateTime.sunday));
       });
     });
 
@@ -174,6 +162,7 @@ void main() {
       test('scheduleAlarm logs the alarm details', () async {
         final alarm = AlarmInfo.create(id: 1, hour: 9, minute: 0, label: 'Test Alarm');
         final override = WeekSchedule(
+          weekIndex: 2,
           year: DateTime.now().year,
           month: DateTime.now().month,
           weekOfMonth: 1,
@@ -217,23 +206,14 @@ void main() {
 
         // Create a double override to force Sunday to ring (contradicting singleRest)
         final doubleOverride = WeekSchedule(
+          weekIndex: 3,
           year: now.year,
           month: now.month,
           weekOfMonth: weekOfMonth,
           weekType: WeekType.double,
         );
 
-        // singleRest normally would not ring on Sunday with single week type
-        // But with double override, resolveWeekType returns double, which means
-        // for singleRest, Saturday rings but Sunday still doesn't
-        final alarm = AlarmInfo.create(
-          hour: 9,
-          minute: 0,
-          repeatType: RepeatType.singleRest,
-          weekdays: [DateTime.sunday],
-        );
-
-        // With doubleRest override, Sunday should NOT ring for singleRest
+        // With double override, Sunday should NOT ring for singleRest
         // because doubleRest means Sunday off
         final singleRestAlarm = AlarmInfo.create(
           hour: 9,
@@ -262,6 +242,7 @@ void main() {
         final weekOfMonth = ((now.day - 1) ~/ 7) + 1;
 
         final singleOverride = WeekSchedule(
+          weekIndex: 4,
           year: now.year,
           month: now.month,
           weekOfMonth: weekOfMonth,

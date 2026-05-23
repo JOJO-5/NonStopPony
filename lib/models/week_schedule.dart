@@ -1,9 +1,12 @@
 /// WeekSchedule model for 单双休 (single/double weekend) scheduling.
 ///
-/// Stores per-week overrides indicating whether a given week of a month
+/// Stores per-week overrides indicating whether a given week
 /// follows 单休 (single weekend) or 双休 (double weekend) pattern.
 ///
-/// Unique constraint: (year, month, weekOfMonth) should be unique in the database.
+/// Key fields:
+/// - [weekIndex]: Absolute week number since Jan 1, 2024 (epoch).
+///   Used for chain-linkage algorithm.
+/// - [year], [month], [weekOfMonth]: Convenience fields for UI display.
 enum WeekType {
   /// 单休 - Saturday rings (work), Sunday off
   single,
@@ -14,14 +17,16 @@ enum WeekType {
 
 class WeekSchedule {
   final int? id;
-  final int year;
-  final int month; // 1-12
-  final int weekOfMonth; // 1-based, which week within the month
+  final int weekIndex; // Absolute week number from epoch (primary key for logic)
+  final int year;      // Convenience: year for UI grouping
+  final int month;     // Convenience: 1-12 for UI grouping
+  final int weekOfMonth; // Convenience: which week within the month (for UI)
   final WeekType weekType;
   final DateTime createdAt;
 
   WeekSchedule({
     this.id,
+    required this.weekIndex,
     required this.year,
     required this.month,
     required this.weekOfMonth,
@@ -33,6 +38,7 @@ class WeekSchedule {
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
+      'weekIndex': weekIndex,
       'year': year,
       'month': month,
       'weekOfMonth': weekOfMonth,
@@ -45,6 +51,7 @@ class WeekSchedule {
   factory WeekSchedule.fromMap(Map<String, dynamic> map) {
     return WeekSchedule(
       id: map['id'] as int?,
+      weekIndex: map['weekIndex'] as int? ?? 0,
       year: map['year'] as int,
       month: map['month'] as int,
       weekOfMonth: map['weekOfMonth'] as int,
@@ -56,6 +63,7 @@ class WeekSchedule {
   /// Creates a copy with optional field overrides.
   WeekSchedule copyWith({
     int? id,
+    int? weekIndex,
     int? year,
     int? month,
     int? weekOfMonth,
@@ -64,6 +72,7 @@ class WeekSchedule {
   }) {
     return WeekSchedule(
       id: id ?? this.id,
+      weekIndex: weekIndex ?? this.weekIndex,
       year: year ?? this.year,
       month: month ?? this.month,
       weekOfMonth: weekOfMonth ?? this.weekOfMonth,
@@ -77,6 +86,7 @@ class WeekSchedule {
     if (identical(this, other)) return true;
     return other is WeekSchedule &&
         other.id == id &&
+        other.weekIndex == weekIndex &&
         other.year == year &&
         other.month == month &&
         other.weekOfMonth == weekOfMonth &&
@@ -86,12 +96,12 @@ class WeekSchedule {
 
   @override
   int get hashCode {
-    return Object.hash(id, year, month, weekOfMonth, weekType, createdAt);
+    return Object.hash(id, weekIndex, year, month, weekOfMonth, weekType, createdAt);
   }
 
   @override
   String toString() {
-    return 'WeekSchedule(id: $id, year: $year, month: $month, '
+    return 'WeekSchedule(id: $id, weekIndex: $weekIndex, year: $year, month: $month, '
         'weekOfMonth: $weekOfMonth, weekType: $weekType, createdAt: $createdAt)';
   }
 }

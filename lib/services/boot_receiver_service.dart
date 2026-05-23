@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'alarm_storage_service.dart';
 import 'alarm_scheduler_service.dart';
 
@@ -20,7 +22,7 @@ class BootReceiverService {
         alarms.where((a) => a.isEnabled).toList(),
       );
     } catch (e) {
-      // Silently handle errors to avoid crashes on boot
+      debugPrint('BootReceiverService.rescheduleAlarmsAfterBoot error: $e');
     }
   }
 }

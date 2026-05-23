@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../models/week_schedule.dart';
 import '../providers/schedule_provider.dart';
+import '../services/holiday_service.dart';
 import '../utils/date_utils.dart' as alarm_utils;
 
-/// Monthly calendar widget showing week rows with 单休/双休 type badges.
+/// Monthly calendar widget showing week rows with 单休/双休 type badges
+/// and holiday/workday markers.
 ///
-/// Each row represents a week of the month, displaying:
-/// - Week label (第1周, 第2周, ...)
-/// - Week type badge: 单休 (orange) or 双休 (green)
-/// - Override indicator "(已覆盖)" when a manual override exists
-/// - Day cells with Saturday/Sunday dimmed
-///
-/// Tapping a week row opens a bottom sheet to toggle the week type.
+/// Features:
+/// - Holiday days shown with green background
+/// - Make-up workdays (补班) shown with orange background
+/// - Chain-linkage: toggling one week automatically updates subsequent weeks
+/// - Override indicator for manually-set weeks
 class WeekScheduleCalendar extends StatefulWidget {
   final int year;
   final int month;
@@ -32,6 +32,44 @@ class WeekScheduleCalendar extends StatefulWidget {
 class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
   static const _orange = Color(0xFFE8936A);
   static const _green = Color(0xFF4CAF50);
+
+  /// Cached holiday info for the current month
+  Map<String, HolidayInfo> _holidayMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHolidays();
+  }
+
+  @override
+  void didUpdateWidget(WeekScheduleCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.year != widget.year || oldWidget.month != widget.month) {
+      _loadHolidays();
+    }
+  }
+
+  Future<void> _loadHolidays() async {
+    try {
+      final holidays = await HolidayService.getMonthHolidays(widget.year, widget.month);
+      if (mounted) {
+        setState(() {
+          _holidayMap = {
+            for (final h in holidays)
+              h.date.toIso8601String().substring(0, 10): h
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load holidays: $e');
+    }
+  }
+
+  HolidayInfo? _getHolidayInfo(DateTime day) {
+    final key = day.toIso8601String().substring(0, 10);
+    return _holidayMap[key];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +91,6 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // Space for week label + badge
           const SizedBox(width: 100),
           ...labels.map((label) {
             final isWeekend = label == '六' || label == '日';
@@ -84,11 +121,10 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
       widget.month,
       week.weekOfMonth,
     );
-    final hasOverride = widget.provider.overrides.any(
-      (o) =>
-          o.year == widget.year &&
-          o.month == widget.month &&
-          o.weekOfMonth == week.weekOfMonth,
+    final hasOverride = widget.provider.hasOverrideForWeek(
+      widget.year,
+      widget.month,
+      week.weekOfMonth,
     );
     final isSingle = weekType == WeekType.single;
     final badgeColor = isSingle ? _orange : _green;
@@ -151,7 +187,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
                         if (hasOverride) ...[
                           const SizedBox(width: 4),
                           const Text(
-                            '(已覆盖)',
+                            '(手动)',
                             style: TextStyle(
                               fontSize: 10,
                               color: Color(0xFF9E9E9E),
@@ -165,58 +201,106 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
               ),
               // Day cells
               ...week.days.map((day) {
-                final isCurrentMonth = day.month == widget.month;
-                final isSaturday = day.weekday == DateTime.saturday;
-                final isSunday = day.weekday == DateTime.sunday;
-                final isWeekend = isSaturday || isSunday;
-                final isToday = _isToday(day);
-
-                // Determine if weekend day should be dimmed
-                // 单休: Saturday is work (not dimmed), Sunday is off (dimmed)
-                // 双休: Both Saturday and Sunday are off (dimmed)
-                final isOff = isWeekend &&
-                    ((isSunday) || (isSaturday && !isSingle));
-
-                Color dayColor;
-                if (!isCurrentMonth) {
-                  dayColor = const Color(0xFFE0E0E0);
-                } else if (isOff) {
-                  dayColor = const Color(0xFFBDBDBD);
-                } else if (isWeekend) {
-                  dayColor = _orange;
-                } else {
-                  dayColor = const Color(0xFF3D2C2C);
-                }
-
                 return Expanded(
-                  child: Center(
-                    child: Container(
-                      width: isToday ? 28 : null,
-                      height: isToday ? 28 : null,
-                      decoration: isToday
-                          ? BoxDecoration(
-                              color: _orange,
-                              shape: BoxShape.circle,
-                            )
-                          : null,
-                      child: Center(
-                        child: Text(
-                          '${day.day}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight:
-                                isToday ? FontWeight.w700 : FontWeight.w400,
-                            color: isToday ? Colors.white : dayColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _buildDayCell(day, isSingle),
                 );
               }),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Builds a single day cell with holiday/workday markers.
+  Widget _buildDayCell(DateTime day, bool isSingleWeek) {
+    final isCurrentMonth = day.month == widget.month;
+    final isSaturday = day.weekday == DateTime.saturday;
+    final isSunday = day.weekday == DateTime.sunday;
+    final isWeekend = isSaturday || isSunday;
+    final isToday = _isToday(day);
+    final holiday = _getHolidayInfo(day);
+
+    // Determine the cell state
+    final isHoliday = holiday?.isHoliday ?? false;
+    final isWorkday = holiday?.isWorkday ?? false;
+
+    // Determine if weekend day should be dimmed (off)
+    final isOff = isWeekend &&
+        ((isSunday && !isWorkday) || (isSaturday && !isSingleWeek && !isWorkday));
+
+    // Background color logic
+    Color? bgColor;
+    Color textColor;
+    String? marker; // Small text like "休" or "班"
+
+    if (!isCurrentMonth) {
+      textColor = const Color(0xFFE0E0E0);
+      marker = null;
+    } else if (isHoliday) {
+      // Statutory holiday — green background
+      bgColor = _green.withValues(alpha: 0.12);
+      textColor = _green;
+      marker = '休';
+    } else if (isWorkday) {
+      // Make-up workday (补班) — orange background
+      bgColor = _orange.withValues(alpha: 0.12);
+      textColor = _orange;
+      marker = '班';
+    } else if (isOff) {
+      textColor = const Color(0xFFBDBDBD);
+      marker = null;
+    } else if (isWeekend && isCurrentMonth) {
+      textColor = _orange;
+      marker = null;
+    } else {
+      textColor = const Color(0xFF3D2C2C);
+      marker = null;
+    }
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: isToday ? 28 : null,
+            height: isToday ? 28 : null,
+            decoration: isToday
+                ? BoxDecoration(
+                    color: _orange,
+                    shape: BoxShape.circle,
+                  )
+                : (bgColor != null
+                    ? BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(6),
+                      )
+                    : null),
+            child: Center(
+              child: Text(
+                '${day.day}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+                  color: isToday ? Colors.white : textColor,
+                ),
+              ),
+            ),
+          ),
+          // Show marker (休/班) below the day number
+          if (marker != null && isCurrentMonth)
+            Text(
+              marker,
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+                height: 1.2,
+              ),
+            )
+          else
+            const SizedBox(height: 10),
+        ],
       ),
     );
   }
@@ -251,13 +335,9 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
   }
 
   /// Builds the list of weeks for the given month.
-  /// Each week starts on Monday and contains 7 days.
-  /// Days outside the current month are included for grid alignment.
   List<_WeekData> _buildMonthWeeks(int year, int month) {
     final firstDay = DateTime(year, month, 1);
-    // Monday=1 .. Sunday=7
     final startWeekday = firstDay.weekday;
-    // Offset to reach Monday of the first week row
     final mondayOffset = startWeekday - DateTime.monday;
     final gridStart = firstDay.subtract(Duration(days: mondayOffset));
 
@@ -267,10 +347,9 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
 
     while (true) {
       final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
-      // Check if this week contains any day from the target month
       final hasMonthDay = days.any((d) => d.month == month && d.year == year);
       if (!hasMonthDay && weekIndex > 1) break;
-      if (weekIndex > 6) break; // safety limit
+      if (weekIndex > 6) break;
 
       weeks.add(_WeekData(
         weekOfMonth: weekIndex,
@@ -315,12 +394,7 @@ class _WeekTypeSheet extends StatelessWidget {
     final autoType = alarm_utils.autoWeekType(
       DateTime(year, month, (weekOfMonth - 1) * 7 + 1),
     );
-    final hasOverride = provider.overrides.any(
-      (o) =>
-          o.year == year &&
-          o.month == month &&
-          o.weekOfMonth == weekOfMonth,
-    );
+    final hasOverride = provider.hasOverrideForWeek(year, month, weekOfMonth);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -353,6 +427,14 @@ class _WeekTypeSheet extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               color: Color(0xFF9E9E9E),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            '切换后，后续周将自动联动调整',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF5C8AE6),
             ),
           ),
           const SizedBox(height: 20),
@@ -457,7 +539,7 @@ class _WeekTypeSheet extends StatelessWidget {
             Icon(Icons.restore, size: 18, color: Color(0xFF9E9E9E)),
             SizedBox(width: 12),
             Text(
-              '恢复自动',
+              '恢复自动（后续周也会联动重算）',
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF9E9E9E),

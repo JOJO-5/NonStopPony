@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/timer_provider.dart';
-import '../services/alarm_notification_service.dart';
 import '../widgets/timer_picker.dart';
 import '../widgets/timer_presets.dart';
+import 'timer_fullscreen_screen.dart';
 
 const Color _kAccent = Color(0xFFE8936A);
 const Color _kBg = Color(0xFFFDF8F3);
@@ -21,7 +21,7 @@ class TimerScreen extends StatefulWidget {
 }
 
 class _TimerScreenState extends State<TimerScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   Duration _pickedDuration = const Duration(minutes: 5);
   late AnimationController _finishController;
   bool _hasPlayedFinishSound = false;
@@ -29,6 +29,7 @@ class _TimerScreenState extends State<TimerScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _finishController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -37,8 +38,19 @@ class _TimerScreenState extends State<TimerScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _finishController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app resumes from background, sync the timer from the
+    // stored end time to correct any drift caused by Doze/background pauses.
+    if (state == AppLifecycleState.resumed) {
+      final provider = context.read<TimerProvider>();
+      provider.syncFromEndTime();
+    }
   }
 
   Future<void> _playFinishSound() async {
@@ -48,13 +60,16 @@ class _TimerScreenState extends State<TimerScreen>
     HapticFeedback.heavyImpact();
 
     try {
-      await AlarmNotificationService().showAlarmNotification(
-        alarmId: 0,
-        title: '计时完成',
-        body: '时间到!',
-      );
+      // Start the timer ringing service (sound + vibration) via native channel
+      const channel = MethodChannel('com.example.alarm_clock/timer_background');
+      await channel.invokeMethod('startTimerRing');
     } catch (e) {
-      print('Timer finish sound error: $e');
+      debugPrint('Timer ring start error: $e');
+    }
+
+    // Show the full-screen timer UI
+    if (mounted) {
+      TimerFullScreenScreen.push(context);
     }
   }
 
@@ -65,6 +80,7 @@ class _TimerScreenState extends State<TimerScreen>
       children: [
         const Spacer(),
         TimerPicker(
+          key: ValueKey(_pickedDuration),
           initial: _pickedDuration,
           onChanged: (d) {
             setState(() => _pickedDuration = d);

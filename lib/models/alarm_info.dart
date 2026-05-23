@@ -8,6 +8,28 @@ enum RepeatType {
   custom,
 }
 
+/// Represents a selectable ringtone with a display title, system URI, and type.
+class RingtoneInfo {
+  final String title;
+  final String uri;
+  final String type; // 'default', 'alarm', 'notification', 'ringtone', 'custom'
+
+  const RingtoneInfo({required this.title, required this.uri, this.type = 'alarm'});
+
+  /// The built-in default alarm sound.
+  static const defaultRingtone = RingtoneInfo(title: '默认', uri: 'default', type: 'default');
+
+  factory RingtoneInfo.fromMap(Map<dynamic, dynamic> map) {
+    return RingtoneInfo(
+      title: map['title'] as String? ?? '未知',
+      uri: map['uri'] as String? ?? 'default',
+      type: map['type'] as String? ?? 'alarm',
+    );
+  }
+
+  Map<String, String> toMap() => {'title': title, 'uri': uri, 'type': type};
+}
+
 class AlarmInfo {
   final int? id;
   final int hour;
@@ -18,7 +40,8 @@ class AlarmInfo {
   final bool vibrate;
   final int snoozeMinutes;
   final bool isEnabled;
-  final String ringtone;
+  final String ringtone;  // URI string: 'default' for built-in, or content:// / file:// URI
+  final String ringtoneTitle;  // Display name for the ringtone
 
   AlarmInfo.create({
     this.id,
@@ -30,7 +53,8 @@ class AlarmInfo {
     this.vibrate = true,
     this.snoozeMinutes = 5,
     this.isEnabled = true,
-    this.ringtone = '默认',
+    this.ringtone = 'default',
+    this.ringtoneTitle = '默认',
   }) : weekdays = weekdays ?? [];
 
   AlarmInfo({
@@ -43,7 +67,8 @@ class AlarmInfo {
     required this.vibrate,
     required this.snoozeMinutes,
     required this.isEnabled,
-    this.ringtone = '默认',
+    this.ringtone = 'default',
+    this.ringtoneTitle = '默认',
   });
 
   Map<String, dynamic> toMap() {
@@ -58,6 +83,7 @@ class AlarmInfo {
       'snoozeMinutes': snoozeMinutes,
       'isEnabled': isEnabled ? 1 : 0,
       'ringtone': ringtone,
+      'ringtoneTitle': ringtoneTitle,
     };
   }
 
@@ -77,7 +103,8 @@ class AlarmInfo {
       vibrate: (map['vibrate'] as int) == 1,
       snoozeMinutes: map['snoozeMinutes'] as int,
       isEnabled: (map['isEnabled'] as int) == 1,
-      ringtone: map['ringtone'] as String? ?? '默认',
+      ringtone: map['ringtone'] as String? ?? 'default',
+      ringtoneTitle: map['ringtoneTitle'] as String? ?? '默认',
     );
   }
 
@@ -92,6 +119,7 @@ class AlarmInfo {
     int? snoozeMinutes,
     bool? isEnabled,
     String? ringtone,
+    String? ringtoneTitle,
   }) {
     return AlarmInfo(
       id: id ?? this.id,
@@ -104,6 +132,7 @@ class AlarmInfo {
       snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
       isEnabled: isEnabled ?? this.isEnabled,
       ringtone: ringtone ?? this.ringtone,
+      ringtoneTitle: ringtoneTitle ?? this.ringtoneTitle,
     );
   }
 }

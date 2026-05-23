@@ -45,8 +45,9 @@ object AlarmScheduler {
                     }
                     val title = call.argument<String>("title") ?: "战马闹钟"
                     val body = call.argument<String>("body") ?: "闹钟响了"
+                    val ringtoneUri = call.argument<String>("ringtoneUri") ?: "default"
 
-                    scheduleExactAlarm(context, alarmId, epochMillis, title, body)
+                    scheduleExactAlarm(context, alarmId, epochMillis, title, body, ringtoneUri)
                     result.success(null)
                 }
                 "cancelExactAlarm" -> {
@@ -67,7 +68,8 @@ object AlarmScheduler {
         alarmId: Int,
         epochMillis: Long,
         title: String,
-        body: String
+        body: String,
+        ringtoneUri: String
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -76,6 +78,7 @@ object AlarmScheduler {
             putExtra("alarmId", alarmId)
             putExtra("title", title)
             putExtra("body", body)
+            putExtra("ringtoneUri", ringtoneUri)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(

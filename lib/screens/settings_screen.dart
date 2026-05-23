@@ -1,25 +1,66 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../providers/schedule_provider.dart';
 import '../models/week_schedule.dart';
 import '../services/alarm_notification_service.dart';
+import '../services/holiday_service.dart';
+import '../services/settings_preferences_service.dart';
 import '../utils/date_utils.dart';
+import '../screens/ringtone_picker_screen.dart';
+import '../screens/about_screen.dart';
 import '../app.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _ringtoneUri = SettingsPreferencesService.defaultRingtoneUri;
+  String _ringtoneTitle = SettingsPreferencesService.defaultRingtoneTitle;
+  bool _ringtoneLoaded = false;
+
+  // Switch states
+  bool _volumeRamp = true;
+  bool _vibration = true;
+  bool _nightMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ScheduleProvider>();
+      if (!provider.loaded) {
+        provider.loadOverrides();
+      }
+      _loadRingtonePref();
+    });
+  }
+
+  Future<void> _loadRingtonePref() async {
+    final uri = await SettingsPreferencesService.getRingtoneUri();
+    final title = await SettingsPreferencesService.getRingtoneTitle();
+    if (mounted) {
+      setState(() {
+        _ringtoneUri = uri;
+        _ringtoneTitle = title;
+        _ringtoneLoaded = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBrandWarmBg,
-      appBar: AppBar(title: const Text('\u8bbe\u7f6e')),
+      appBar: AppBar(title: const Text('设置')),
       body: Consumer<ScheduleProvider>(
         builder: (context, provider, _) {
           if (!provider.loaded) {
-            provider.loadOverrides();
             return const Center(child: CircularProgressIndicator(color: kBrandCopper));
           }
           return SingleChildScrollView(
@@ -29,15 +70,19 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 _buildWeekTypeSection(context, provider),
                 const SizedBox(height: kSpace3),
+                _buildHolidaySection(context),
+                const SizedBox(height: kSpace3),
                 _buildRingtoneSection(context),
                 const SizedBox(height: kSpace3),
                 _buildDiagnosticSection(context),
+                const SizedBox(height: kSpace3),
+                _buildPermissionSection(context),
                 const SizedBox(height: kSpace3),
                 _buildMiuiSection(context),
                 const SizedBox(height: kSpace3),
                 _buildOtherSection(context),
                 const SizedBox(height: kSpace3),
-                _buildAboutSection(),
+                _buildAboutSection(context),
               ],
             ),
           );
@@ -56,23 +101,23 @@ class SettingsScreen extends StatelessWidget {
       (o) => o!.year == now.year && o.month == now.month && o.weekOfMonth == weekOfMonth,
     );
     final autoType = autoWeekType(now);
-    final autoLabel = autoType == WeekType.single ? '\u5355\u4f11\u5468' : '\u53cc\u4f11\u5468';
-    final resolvedLabel = resolvedType == WeekType.single ? '\u5355\u4f11\u5468' : '\u53cc\u4f11\u5468';
+    final autoLabel = autoType == WeekType.single ? '单休周' : '双休周';
+    final resolvedLabel = resolvedType == WeekType.single ? '单休周' : '双休周';
 
     return _Card(
-      title: '\u5f53\u524d\u5468\u8bbe\u7f6e',
+      title: '当前周设置',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Text(
-                '${now.year}\u5e74\u7b2c${weekNumber(now)}\u5468',
+                '${now.year}年第${weekNumber(now)}周',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: kBrandTextPrimary),
               ),
               const SizedBox(width: kSpace2),
               Text(
-                '\u81ea\u52a8: $autoLabel',
+                '自动: $autoLabel',
                 style: const TextStyle(fontSize: 13, color: kBrandTextSecondary),
               ),
             ],
@@ -81,14 +126,14 @@ class SettingsScreen extends StatelessWidget {
           Row(
             children: [
               _TypeChip(
-                label: '\u5355\u4f11\u5468',
+                label: '单休周',
                 active: resolvedType == WeekType.single,
                 activeColor: kBrandCopper,
                 onTap: () => provider.setOverride(now.year, now.month, weekOfMonth, WeekType.single),
               ),
               const SizedBox(width: kSpace2),
               _TypeChip(
-                label: '\u53cc\u4f11\u5468',
+                label: '双休周',
                 active: resolvedType == WeekType.double,
                 activeColor: kSemanticSuccess,
                 onTap: () => provider.setOverride(now.year, now.month, weekOfMonth, WeekType.double),
@@ -96,7 +141,7 @@ class SettingsScreen extends StatelessWidget {
               if (hasOverride) ...[
                 const SizedBox(width: kSpace2),
                 _TypeChip(
-                  label: '\u6e05\u9664',
+                  label: '清除',
                   active: false,
                   activeColor: kBrandTextSecondary,
                   onTap: () => provider.removeOverride(now.year, now.month, weekOfMonth),
@@ -112,7 +157,7 @@ class SettingsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(kRadiusSm),
             ),
             child: Text(
-              '\u5f53\u524d: $resolvedLabel',
+              '当前: $resolvedLabel',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -125,51 +170,116 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // ── Ringtone ───────────────────────────────────────────────────────────
+  // ── Holiday sync ─────────────────────────────────────────────────────
 
-  Widget _buildRingtoneSection(BuildContext context) {
+  Widget _buildHolidaySection(BuildContext context) {
     return _Card(
-      title: '\u94c3\u58f0\u8bbe\u7f6e',
+      title: '法定节假日',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _RowTile(
-            label: '\u9ed8\u8ba4\u94c3\u58f0',
-            subtitle: '\u9ed8\u8ba4',
-            trailing: const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
-            onTap: () => _showRingtoneDialog(context),
+          const Text('自动同步国家法定节假日和调休安排', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const SizedBox(height: 2),
+          const Text('假期日闹钟不响，补班日闹钟照常响', style: TextStyle(fontSize: 13, color: kBrandCopper, fontWeight: FontWeight.w500)),
+          const SizedBox(height: kSpace3),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  final now = DateTime.now();
+                  final cnt1 = await HolidayService.fetchAndCacheYear(now.year);
+                  final cnt2 = await HolidayService.fetchAndCacheYear(now.year + 1);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('同步完成：${now.year}年 $cnt1 条，${now.year + 1}年 $cnt2 条'),
+                        backgroundColor: kSemanticSuccess,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('同步失败：$e'),
+                        backgroundColor: kSemanticError,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.cloud_download_rounded, size: 18),
+              label: const Text('立即同步节假日数据'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kBrandCopper,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+              ),
+            ),
           ),
-          const _Divider(),
-          _SwitchTile(label: '\u6e10\u5f3a', subtitle: '\u95f9\u949f\u54cd\u8d77\u65f6\u9010\u6e10\u589e\u5927\u97f3\u91cf', value: true, onChanged: (_) {}),
         ],
       ),
     );
   }
 
-  void _showRingtoneDialog(BuildContext context) {
-    const ringtones = ['\u9ed8\u8ba4', '\u65e5\u51fa', '\u6d77\u6d6a', '\u9e1f\u9e23', '\u94a2\u7434'];
-    String selected = '\u9ed8\u8ba4';
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusLg)),
-          title: const Text('\u9009\u62e9\u94c3\u58f0', style: TextStyle(fontWeight: FontWeight.w600)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: ringtones.map((name) => RadioListTile<String>(
-              contentPadding: EdgeInsets.zero,
-              title: Text(name),
-              value: name,
-              groupValue: selected,
-              activeColor: kBrandCopper,
-              onChanged: (v) => setD(() => selected = v!),
-            )).toList(),
+  // ── Ringtone ──────────────────────────────────────────────────────────────────
+
+  Widget _buildRingtoneSection(BuildContext context) {
+    final subtitle = !_ringtoneLoaded
+        ? '加载中…'
+        : _ringtoneUri == SettingsPreferencesService.defaultRingtoneUri
+            ? _ringtoneTitle
+            : _ringtoneTitle.length > 12
+                ? '${_ringtoneTitle.substring(0, 12)}…'
+                : _ringtoneTitle;
+
+    return _Card(
+      title: '铃声设置',
+      child: Column(
+        children: [
+          _RowTile(
+            label: '默认铃声',
+            subtitle: subtitle,
+            trailing: const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
+            onTap: () async {
+              final result = await Navigator.push<RingtoneSelection>(
+                context,
+                PageRouteBuilder(
+                  opaque: true,
+                  pageBuilder: (_, __, ___) => RingtonePickerScreen(
+                    currentRingtone: _ringtoneUri,
+                    currentRingtoneTitle: _ringtoneTitle,
+                  ),
+                  transitionsBuilder: (_, animation, __, child) =>
+                      FadeTransition(opacity: animation, child: child),
+                  transitionDuration: const Duration(milliseconds: 250),
+                ),
+              );
+              if (result != null && mounted) {
+                await SettingsPreferencesService.setRingtone(result.uri, result.title);
+                setState(() {
+                  _ringtoneUri = result.uri;
+                  _ringtoneTitle = result.title;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('默认铃声已设为「${result.title}」'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: kSemanticSuccess,
+                    ),
+                  );
+                }
+              }
+            },
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('\u53d6\u6d88', style: TextStyle(color: kBrandTextSecondary))),
-            TextButton(onPressed: () => Navigator.pop(ctx, selected), child: const Text('\u786e\u5b9a', style: TextStyle(color: kBrandCopper))),
-          ],
-        ),
+          const _Divider(),
+          _SwitchTile(label: '渐强', subtitle: '闹钟响起时逐渐增大音量', value: _volumeRamp, onChanged: (v) => setState(() => _volumeRamp = v)),
+        ],
       ),
     );
   }
@@ -178,18 +288,18 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildDiagnosticSection(BuildContext context) {
     return _Card(
-      title: '\u901a\u77e5\u8bca\u65ad',
+      title: '通知诊断',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('\u5982\u679c\u95f9\u949f\u6ca1\u6709\u54cd\uff0c\u53ef\u80fd\u662f\u7cfb\u7edf\u901a\u77e5\u6743\u9650\u672a\u5f00\u542f', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text('如果闹钟没有响，可能是系统通知权限未开启', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
           const SizedBox(height: kSpace3),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _testNotification,
               icon: const Icon(Icons.notifications_active_rounded, size: 18),
-              label: const Text('\u6d4b\u8bd5\u901a\u77e5'),
+              label: const Text('测试通知'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
@@ -205,36 +315,104 @@ class SettingsScreen extends StatelessWidget {
     try {
       AlarmNotificationService().showAlarmNotification(
         alarmId: -1,
-        title: '\u6d4b\u8bd5\u901a\u77e5',
-        body: '\u5982\u679c\u80fd\u770b\u5230\u8fd9\u6761\u901a\u77e5\uff0c\u8bf4\u660e\u901a\u77e5\u6743\u9650\u548c\u94c3\u58f0\u90fd\u6b63\u5e38',
+        title: '测试通知',
+        body: '如果能看到这条通知，说明通知权限和铃声都正常',
       );
     } catch (e) {
       debugPrint('Test notification error: $e');
     }
   }
 
+  // ── Permission status ────────────────────────────────────────────────
+
+  Widget _buildPermissionSection(BuildContext context) {
+    return _Card(
+      title: '权限检测',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('如果闹钟不响，请确保以下权限已开启', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const SizedBox(height: kSpace3),
+          _PermissionButton(
+            icon: Icons.notifications_rounded,
+            label: '通知权限',
+            desc: '接收闹钟响铃通知',
+            onTap: () async {
+              final plugin = AlarmNotificationService();
+              await plugin.requestAndroidPermissions();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('已请求通知权限，请查看系统弹窗'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: kSpace2),
+          _PermissionButton(
+            icon: Icons.alarm_rounded,
+            label: '精确闹钟权限',
+            desc: '保证闹钟在精确时间触发',
+            onTap: () async {
+              final plugin = AlarmNotificationService();
+              await plugin.requestAndroidPermissions();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('已请求精确闹钟权限，请查看系统弹窗'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: kSpace2),
+          _PermissionButton(
+            icon: Icons.battery_charging_full,
+            label: '忽略电池优化',
+            desc: '避免系统在后台杀死闹钟进程',
+            onTap: () async {
+              final plugin = AlarmNotificationService();
+              await plugin.requestIgnoreBatteryOptimizations();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('已请求电池优化白名单'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── MIUI diag ──────────────────────────────────────────────────────────
 
   Widget _buildMiuiSection(BuildContext context) {
     return _Card(
-      title: 'Android \u95f9\u949f\u8bca\u65ad',
+      title: 'Android 闹钟诊断',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('\u5c0f\u7c73/HyperOS \u8bbe\u5907\u9700\u989d\u5916\u914d\u7f6e\u4ee5\u4e0b\u4e09\u9879', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text('小米/HyperOS 设备需额外配置以下三项', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
           const SizedBox(height: kSpace3),
-          _DiagStep(num: '1', title: '\u5173\u95ed\u7535\u6c60\u4f18\u5316', desc: '\u8bbe\u7f6e \u2192 \u5e94\u7528\u8bbe\u7f6e \u2192 \u6218\u9a6c\u95f9\u949f \u2192 \u7701\u7535\u7b56\u7565 \u2192 \u65e0\u9650\u5236'),
+          _DiagStep(num: '1', title: '关闭电池优化', desc: '设置 → 应用设置 → 战马闹钟 → 省电策略 → 无限制'),
           const SizedBox(height: kSpace2),
-          _DiagStep(num: '2', title: '\u5f00\u542f\u81ea\u542f\u52a8', desc: '\u8bbe\u7f6e \u2192 \u5e94\u7528\u8bbe\u7f6e \u2192 \u6218\u9a6c\u95f9\u949f \u2192 \u81ea\u542f\u52a8 \u2192 \u5f00\u542f'),
+          _DiagStep(num: '2', title: '开启自启动', desc: '设置 → 应用设置 → 战马闹钟 → 自启动 → 开启'),
           const SizedBox(height: kSpace2),
-          _DiagStep(num: '3', title: '\u95f9\u949f\u7cbe\u786e\u6743\u9650', desc: '\u8bbe\u7f6e \u2192 \u5e94\u7528\u8bbe\u7f6e \u2192 \u6218\u9a6c\u95f9\u949f \u2192 \u5176\u4ed6\u6743\u9650 \u2192 \u95f9\u949f\u6743\u9650 \u2192 \u5141\u8bb8'),
+          _DiagStep(num: '3', title: '闹钟精确权限', desc: '设置 → 应用设置 → 战马闹钟 → 其他权限 → 闹钟权限 → 允许'),
           const SizedBox(height: kSpace3),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _openAppSettings,
               icon: const Icon(Icons.settings_rounded, size: 16),
-              label: const Text('\u6253\u5f00\u7cfb\u7edf\u5e94\u7528\u8bbe\u7f6e'),
+              label: const Text('打开系统应用设置'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
@@ -242,7 +420,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: kSpace2),
-          // Bug #4 fix: fullScreenIntent permission guide for Android 14+
           _RowTile(
             label: '锁屏闹钟提醒',
             subtitle: '需要开启权限才能在锁屏时显示全屏闹钟',
@@ -263,9 +440,6 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  /// Bug #4 fix: Opens the USE_FULL_SCREEN_INTENT permission settings
-  /// on Android 14+. Without this permission, the alarm cannot show
-  /// a full-screen intent when the device is locked.
   void _openFullScreenIntentSettings() {
     try {
       const channel = MethodChannel('com.example.alarm_clock/settings');
@@ -279,12 +453,12 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildOtherSection(BuildContext context) {
     return _Card(
-      title: '\u5176\u4ed6',
+      title: '其他',
       child: Column(
         children: [
-          _SwitchTile(label: '\u632f\u52a8', value: true, onChanged: (_) {}),
+          _SwitchTile(label: '震动', value: _vibration, onChanged: (v) => setState(() => _vibration = v)),
           const _Divider(),
-          _SwitchTile(label: '\u591c\u95f4\u6a21\u5f0f (23:00-7:00 \u9759\u97f3)', subtitle: '\u591c\u95f4\u65f6\u6bb5\u81ea\u52a8\u9759\u97f3\u95f9\u949f', value: false, onChanged: (_) {}),
+          _SwitchTile(label: '夜间模式 (23:00-7:00 静音)', subtitle: '夜间时段自动静音闹钟', value: _nightMode, onChanged: (v) => setState(() => _nightMode = v)),
         ],
       ),
     );
@@ -292,32 +466,48 @@ class SettingsScreen extends StatelessWidget {
 
   // ── About ──────────────────────────────────────────────────────────────
 
-  Widget _buildAboutSection() {
+  Widget _buildAboutSection(BuildContext context) {
     return _Card(
-      title: '\u5173\u4e8e',
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: kBrandCopper.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(kRadiusMd),
+      title: '关于',
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: true,
+              pageBuilder: (_, __, ___) => const AboutScreen(),
+              transitionsBuilder: (_, animation, __, child) =>
+                  FadeTransition(opacity: animation, child: child),
+              transitionDuration: const Duration(milliseconds: 250),
             ),
-            child: const Icon(Icons.alarm_on_rounded, color: kBrandCopper, size: 26),
-          ),
-          const SizedBox(width: kSpace3),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('\u6218\u9a6c\u95f9\u949f', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kBrandTextPrimary)),
-                SizedBox(height: 2),
-                Text('v1.0.0 \u2014 \u667a\u80fd\u5355\u53cc\u4f11\u95f9\u949f', style: TextStyle(fontSize: 12, color: kBrandTextSecondary)),
-              ],
+          );
+        },
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: kBrandCopper.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(kRadiusMd),
+              ),
+              child: const Icon(Icons.alarm_on_rounded, color: kBrandCopper, size: 26),
             ),
-          ),
-        ],
+            const SizedBox(width: kSpace3),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('战马闹钟', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kBrandTextPrimary)),
+                  SizedBox(height: 2),
+                  Text('v1.0.0', style: TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -412,7 +602,7 @@ class _SwitchTile extends StatelessWidget {
           child: Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: kBrandCopper,
+            activeThumbColor: kBrandCopper,
           ),
         ),
       ],
@@ -488,6 +678,52 @@ class _DiagStep extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Permission action button used in [SettingsScreen._buildPermissionSection].
+class _PermissionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String desc;
+  final VoidCallback onTap;
+
+  const _PermissionButton({
+    required this.icon,
+    required this.label,
+    required this.desc,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: kBrandTextPrimary,
+        side: const BorderSide(color: kBrandOutlineVariant),
+        padding: const EdgeInsets.symmetric(horizontal: kSpace3, vertical: kSpace2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: kBrandCopper),
+          const SizedBox(width: kSpace2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: kBrandTextPrimary)),
+                Text(desc,
+                    style: const TextStyle(fontSize: 11, color: kBrandTextSecondary)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, size: 18, color: kBrandOutline),
+        ],
+      ),
     );
   }
 }

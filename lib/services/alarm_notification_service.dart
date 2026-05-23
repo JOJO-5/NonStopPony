@@ -155,18 +155,40 @@ class AlarmNotificationService {
     // Use a post-frame callback so the navigator is ready.
     // Use fade-in transition instead of default slide animation.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      alarmNavigatorKey.currentState?.push(
-        PageRouteBuilder(
-          opaque: true,
-          pageBuilder: (_, __, ___) => AlarmFullScreenScreen(
-            alarmId: alarmId,
-            label: '战马闹钟',
+      final state = alarmNavigatorKey.currentState;
+      if (state != null && state.mounted) {
+        state.push(
+          PageRouteBuilder(
+            opaque: true,
+            pageBuilder: (_, __, ___) => AlarmFullScreenScreen(
+              alarmId: alarmId,
+              label: '战马闹钟',
+            ),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
           ),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 300),
-        ),
-      );
+        );
+      } else {
+        // Navigator not ready yet — retry after delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          final retryState = alarmNavigatorKey.currentState;
+          if (retryState != null && retryState.mounted) {
+            retryState.push(
+              PageRouteBuilder(
+                opaque: true,
+                pageBuilder: (_, __, ___) => AlarmFullScreenScreen(
+                  alarmId: alarmId,
+                  label: '战马闹钟',
+                ),
+                transitionsBuilder: (_, animation, __, child) =>
+                    FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
+            );
+          }
+        });
+      }
     });
   }
 
@@ -222,7 +244,7 @@ class AlarmNotificationService {
     );
 
     // Bug #2 fix: start the foreground service for continuous ringing + vibration
-    startAlarmRing();
+    startAlarmRing(ringtoneUri: ringtone);
   }
 
   Future<void> cancelAlarmNotification(int alarmId) async {
@@ -307,9 +329,13 @@ class AlarmNotificationService {
     );
   }
 
-  /// Maps ringtone name to a raw resource sound.
+  /// Maps ringtone URI to a raw resource sound for notification channel.
+  /// Only used for flutter_local_notifications fallback.
+  /// The AlarmRingingService uses the URI directly via MediaPlayer.
   RawResourceAndroidNotificationSound? _ringtoneToSound(String ringtone) {
-    if (ringtone == '默认') return null;
+    if (ringtone == 'default' || ringtone.isEmpty) return null;
+    // For system ringtones, let Android handle the sound via the notification
+    // channel. We only set a custom sound for our built-in alarm_sound.
     return const RawResourceAndroidNotificationSound('alarm_sound');
   }
 
@@ -328,7 +354,7 @@ class AlarmNotificationService {
     required String body,
     required DateTime scheduledDate,
     bool requireExact = true,
-    String ringtone = '默认',
+    String ringtone = 'default',
   }) async {
     if (Platform.isAndroid) {
       try {
@@ -337,6 +363,7 @@ class AlarmNotificationService {
           'epochMillis': scheduledDate.millisecondsSinceEpoch,
           'title': title,
           'body': body,
+          'ringtoneUri': ringtone,
         });
         debugPrint('Scheduled exact alarm $alarmId via AlarmManager at $scheduledDate');
         return;
@@ -394,13 +421,15 @@ class AlarmNotificationService {
   /// Starts the Android AlarmRingingService for continuous alarm sound
   /// and vibration via a foreground service.
   ///
-  /// This is the core fix for Bug #2: the notification sound only plays
-  /// once for a few seconds. This service keeps the alarm ringing until
-  /// [stopAlarmRing] is called.
-  static Future<void> startAlarmRing() async {
+  /// [ringtoneUri] specifies the sound to play:
+  /// - "default" → app's built-in alarm_sound.ogg
+  /// - content:// URI → system ringtone or custom audio file
+  static Future<void> startAlarmRing({String ringtoneUri = 'default'}) async {
     if (!Platform.isAndroid) return;
     try {
-      await _alarmRingChannel.invokeMethod<void>('startAlarmRing');
+      await _alarmRingChannel.invokeMethod<void>('startAlarmRing', {
+        'ringtoneUri': ringtoneUri,
+      });
     } catch (e) {
       debugPrint('startAlarmRing failed: $e');
     }

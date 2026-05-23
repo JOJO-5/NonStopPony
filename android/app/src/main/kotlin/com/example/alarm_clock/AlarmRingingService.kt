@@ -49,6 +49,7 @@ class AlarmRingingService : Service() {
         private var currentAlarmId: Int = -1
         private var currentTitle: String = "战马闹钟"
         private var currentBody: String = "闹钟响了"
+        private var currentRingtoneUri: String = "default"
 
         /** Vibration pattern: [delay, on, off, on, off, ...] in milliseconds */
         private val vibrationTimings = longArrayOf(0, 500, 200, 500, 200, 500)
@@ -92,12 +93,16 @@ class AlarmRingingService : Service() {
 
         /**
          * Convenience method to start the ringing service from any Context.
+         * Accepts an optional pre-built intent with extras (e.g. ringtoneUri).
          */
-        fun start(context: Context) {
-            val intent = Intent(context, AlarmRingingService::class.java).apply {
+        fun start(context: Context, intent: Intent? = null) {
+            val serviceIntent = intent ?: Intent(context, AlarmRingingService::class.java).apply {
                 action = ACTION_START
             }
-            context.startForegroundService(intent)
+            if (serviceIntent.action == null) {
+                serviceIntent.action = ACTION_START
+            }
+            context.startForegroundService(serviceIntent)
         }
 
         /**
@@ -130,6 +135,7 @@ class AlarmRingingService : Service() {
                 intent.getIntExtra("alarmId", -1).let { if (it >= 0) currentAlarmId = it }
                 intent.getStringExtra("title")?.let { currentTitle = it }
                 intent.getStringExtra("body")?.let { currentBody = it }
+                intent.getStringExtra("ringtoneUri")?.let { currentRingtoneUri = it }
 
                 val notification = buildForegroundNotification()
                 startForeground(NOTIFICATION_ID, notification)
@@ -152,37 +158,77 @@ class AlarmRingingService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         stopRinging()
+        // Reschedule the next alarm when the user swipes away the app from recents.
+        // This ensures alarms still fire even after the app process is killed.
+        try {
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<AlarmRescheduleWorker>().build()
+            androidx.work.WorkManager.getInstance(applicationContext).enqueue(workRequest)
+            Log.d(TAG, "onTaskRemoved: enqueued AlarmRescheduleWorker")
+        } catch (e: Exception) {
+            Log.e(TAG, "onTaskRemoved: failed to enqueue reschedule work", e)
+        }
         super.onTaskRemoved(rootIntent)
     }
 
     /**
      * Starts the alarm sound (MediaPlayer looping) and vibration.
+     * Supports:
+     * - "default" → app's built-in alarm_sound.ogg
+     * - content:// URI → system ringtone or custom audio file
+     * - Any other URI → try to play it
      */
     private fun startRinging() {
         if (isRinging) return
         isRinging = true
 
-        Log.d(TAG, "Starting alarm ringing: alarmId=$currentAlarmId, title=$currentTitle")
+        Log.d(TAG, "Starting alarm ringing: alarmId=$currentAlarmId, title=$currentTitle, ringtoneUri=$currentRingtoneUri")
 
         // --- MediaPlayer: loop alarm sound ---
         try {
-            mediaPlayer = MediaPlayer.create(applicationContext, R.raw.alarm_sound).apply {
-                isLooping = true
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setLegacyStreamType(AudioManager.STREAM_ALARM)
-                        .build()
-                )
-                setVolume(1.0f, 1.0f)
-                start()
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setLegacyStreamType(AudioManager.STREAM_ALARM)
+                .build()
+
+            when {
+                currentRingtoneUri == "default" || currentRingtoneUri.isEmpty() -> {
+                    // Use built-in alarm sound
+                    mediaPlayer = MediaPlayer.create(applicationContext, R.raw.alarm_sound).apply {
+                        isLooping = true
+                        setAudioAttributes(audioAttributes)
+                        setVolume(1.0f, 1.0f)
+                        start()
+                    }
+                }
+                currentRingtoneUri.startsWith("content://") -> {
+                    // Use system ringtone or custom audio file URI
+                    val uri = android.net.Uri.parse(currentRingtoneUri)
+                    mediaPlayer = MediaPlayer().apply {
+                        setAudioAttributes(audioAttributes)
+                        setDataSource(applicationContext, uri)
+                        isLooping = true
+                        setVolume(1.0f, 1.0f)
+                        prepare()
+                        start()
+                    }
+                }
+                else -> {
+                    // Fallback: try as raw resource, then as URI
+                    mediaPlayer = MediaPlayer.create(applicationContext, R.raw.alarm_sound).apply {
+                        isLooping = true
+                        setAudioAttributes(audioAttributes)
+                        setVolume(1.0f, 1.0f)
+                        start()
+                    }
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "MediaPlayer create failed", e)
-            // Fallback: try creating with different method
+            Log.e(TAG, "MediaPlayer create failed for URI: $currentRingtoneUri", e)
+            // Fallback: try the built-in sound
             try {
-                mediaPlayer = MediaPlayer().apply {
+                mediaPlayer = MediaPlayer.create(applicationContext, R.raw.alarm_sound).apply {
+                    isLooping = true
                     setAudioAttributes(
                         AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -190,13 +236,7 @@ class AlarmRingingService : Service() {
                             .setLegacyStreamType(AudioManager.STREAM_ALARM)
                             .build()
                     )
-                    setDataSource(
-                        applicationContext,
-                        android.net.Uri.parse("android.resource://${packageName}/${R.raw.alarm_sound}")
-                    )
-                    isLooping = true
                     setVolume(1.0f, 1.0f)
-                    prepare()
                     start()
                 }
             } catch (e2: Exception) {
@@ -249,6 +289,7 @@ class AlarmRingingService : Service() {
         currentAlarmId = -1
         currentTitle = "战马闹钟"
         currentBody = "闹钟响了"
+        currentRingtoneUri = "default"
 
         // Stop foreground and service
         try {
@@ -342,6 +383,9 @@ class AlarmRingingService : Service() {
         )
 
         // Full-screen intent for lock screen display
+        // Use FLAG_ACTIVITY_NEW_TASK + FLAG_ACTIVITY_CLEAR_TOP (singleTask launchMode).
+        // Do NOT use FLAG_ACTIVITY_CLEAR_TASK — it destroys the existing task stack
+        // and causes Flutter state loss, breaking the navigator key.
         val fullScreenIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("alarmId", currentAlarmId)

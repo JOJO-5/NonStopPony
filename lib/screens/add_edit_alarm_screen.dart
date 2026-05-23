@@ -1,12 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/alarm_info.dart';
 import '../providers/alarm_provider.dart';
 import '../widgets/repeat_picker.dart';
+import '../screens/ringtone_picker_screen.dart';
 import '../app.dart';
-
-const _kRingtones = ['\u9ed8\u8ba4', '\u65e5\u51fa', '\u6d77\u6d6a', '\u9e1f\u9e23'];
 
 class AddEditAlarmScreen extends StatefulWidget {
   final AlarmInfo? alarm;
@@ -21,8 +21,13 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   late List<int> _selectedDays;
   late RepeatType _repeatType;
   late TextEditingController _labelController;
-  late String _ringtone;
+  late String _ringtone;       // URI
+  late String _ringtoneTitle;  // Display name
   bool _saving = false;
+
+  /// Fixed extent controllers for the hour and minute pickers.
+  late FixedExtentScrollController _hourController;
+  late FixedExtentScrollController _minuteController;
 
   bool get _isEditing => widget.alarm != null;
 
@@ -35,19 +40,21 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     _selectedDays = a != null ? List<int>.from(a.weekdays) : [];
     _repeatType = a?.repeatType ?? RepeatType.once;
     _labelController = TextEditingController(text: a?.label ?? '');
-    _ringtone = a?.ringtone ?? '\u9ed8\u8ba4';
+    _ringtone = a?.ringtone ?? 'default';
+    _ringtoneTitle = a?.ringtoneTitle ?? '默认';
+
+    // Initialise scroll controllers so the wheels start at the correct value.
+    _hourController = FixedExtentScrollController(initialItem: _hour);
+    _minuteController = FixedExtentScrollController(initialItem: _minute);
   }
 
   @override
   void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
     _labelController.dispose();
     super.dispose();
   }
-
-  void _incrementHour() => setState(() => _hour = (_hour + 1) % 24);
-  void _decrementHour() => setState(() => _hour = (_hour - 1 + 24) % 24);
-  void _incrementMinute() => setState(() => _minute = (_minute + 1) % 60);
-  void _decrementMinute() => setState(() => _minute = (_minute - 1 + 60) % 60);
 
   Future<void> _save() async {
     if (_saving) return;
@@ -61,6 +68,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
         weekdays: _selectedDays,
         label: _labelController.text.isEmpty ? null : _labelController.text,
         ringtone: _ringtone,
+        ringtoneTitle: _ringtoneTitle,
       );
       final provider = context.read<AlarmProvider>();
       if (_isEditing) {
@@ -74,44 +82,31 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     }
   }
 
-  void _showRingtonePicker() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('\u9009\u62e9\u94c3\u58f0'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusLg)),
-        children: _kRingtones.map((name) {
-          return SimpleDialogOption(
-            onPressed: () {
-              setState(() => _ringtone = name);
-              Navigator.pop(ctx);
-            },
-            child: Row(
-              children: [
-                Icon(
-                  _ringtone == name ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: _ringtone == name ? kBrandCopper : kBrandTextSecondary,
-                  size: 20,
-                ),
-                const SizedBox(width: kSpace3),
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontWeight: _ringtone == name ? FontWeight.w600 : FontWeight.normal,
-                    color: _ringtone == name ? kBrandCopper : kBrandTextPrimary,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+  /// Opens the full-screen ringtone picker page
+  Future<void> _showRingtonePicker() async {
+    final result = await Navigator.push<RingtoneSelection>(
+      context,
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => RingtonePickerScreen(
+          currentRingtone: _ringtone,
+          currentRingtoneTitle: _ringtoneTitle,
+        ),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 250),
       ),
     );
+    if (result != null && mounted) {
+      setState(() {
+        _ringtone = result.uri;
+        _ringtoneTitle = result.title;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final timeStr = '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
 
     return Scaffold(
@@ -127,7 +122,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Inline time setter ──────────────────────────
+            // ── Roller-style time picker ───────────────────
             _SectionCard(
               child: Column(
                 children: [
@@ -136,41 +131,54 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kBrandTextSecondary),
                   ),
                   const SizedBox(height: kSpace4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Hour column
-                      _TimeColumn(
-                        value: _hour.toString().padLeft(2, '0'),
-                        onUp: _incrementHour,
-                        onDown: _decrementHour,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: kSpace2),
-                        child: Text(
-                          ':',
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.w200,
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  SizedBox(
+                    height: 200,
+                    child: Row(
+                      children: [
+                        // Hour wheel
+                        Expanded(
+                          child: _TimeWheel(
+                            controller: _hourController,
+                            itemCount: 24,
+                            initialValue: _hour,
+                            onSelectedItemChanged: (index) {
+                              setState(() => _hour = index);
+                            },
                           ),
                         ),
-                      ),
-                      // Minute column
-                      _TimeColumn(
-                        value: _minute.toString().padLeft(2, '0'),
-                        onUp: _incrementMinute,
-                        onDown: _decrementMinute,
-                      ),
-                    ],
+                        // Colon separator
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            ':',
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w300,
+                              color: kBrandCopper,
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                        // Minute wheel
+                        Expanded(
+                          child: _TimeWheel(
+                            controller: _minuteController,
+                            itemCount: 60,
+                            initialValue: _minute,
+                            onSelectedItemChanged: (index) {
+                              setState(() => _minute = index);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: kSpace2),
                   Text(
                     timeStr,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      color: colorScheme.onSurfaceVariant,
+                      color: kBrandTextSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -187,31 +195,63 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                 children: [
                   const _SectionLabel(label: '\u91cd\u590d'),
                   const SizedBox(height: kSpace3),
-                  RepeatPicker(
-                    selectedDays: _selectedDays,
-                    onChanged: (days) => setState(() => _selectedDays = days),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: kSpace3),
-
-            // ── Week type (single/double rest) ──────────────
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionLabel(label: '\u5355\u53cc\u4f11'),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '\u8bbe\u7f6e\u95f9\u949f\u4ec5\u5728\u5355\u5468\u6216\u53cc\u5468\u751f\u6548',
-                    style: TextStyle(fontSize: 12, color: kBrandTextSecondary),
-                  ),
-                  const SizedBox(height: kSpace3),
+                  // Week type dropdown — drives RepeatPicker selection
                   _WeekTypeDropdown(
                     value: _repeatType,
-                    onChanged: (type) => setState(() => _repeatType = type),
+                    onChanged: (type) {
+                      setState(() {
+                        _repeatType = type;
+                        // Auto-set selectedDays based on dropdown choice
+                        switch (type) {
+                          case RepeatType.daily:
+                            _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+                          case RepeatType.weekdays:
+                            _selectedDays = [1, 2, 3, 4, 5];
+                          case RepeatType.singleRest:
+                            _selectedDays = [1, 2, 3, 4, 5, 6];
+                          case RepeatType.doubleRest:
+                            _selectedDays = [1, 2, 3, 4, 5];
+                          case RepeatType.custom:
+                            // Keep current selection for custom
+                            break;
+                          case RepeatType.once:
+                          case RepeatType.weekends:
+                            // These shouldn't appear in the dropdown,
+                            // but handle gracefully
+                            break;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: kSpace3),
+                  RepeatPicker(
+                    selectedDays: _selectedDays,
+                    onChanged: (days) {
+                      setState(() {
+                        _selectedDays = days;
+                        // Auto-infer repeatType from selected days
+                        if (days.isEmpty) {
+                          _repeatType = RepeatType.once;
+                        } else if (days.length == 7 &&
+                            days.every((d) => [1, 2, 3, 4, 5, 6, 7].contains(d))) {
+                          _repeatType = RepeatType.daily;
+                        } else if (days.length == 6 &&
+                            days.every((d) => d >= 1 && d <= 6)) {
+                          // Mon-Sat selected → singleRest (single-week gets 1 day off)
+                          _repeatType = RepeatType.singleRest;
+                        } else if (days.length == 5 &&
+                            days.every((d) => d >= 1 && d <= 5)) {
+                          // Mon-Fri → could be weekdays or doubleRest
+                          // Prefer doubleRest as it's the more common alarm pattern
+                          _repeatType = RepeatType.doubleRest;
+                        } else if (days.length == 2 &&
+                            days.contains(6) && days.contains(7)) {
+                          _repeatType = RepeatType.weekends;
+                        } else {
+                          _repeatType = RepeatType.custom;
+                        }
+                      });
+                    },
                   ),
                 ],
               ),
@@ -244,11 +284,20 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const _SectionLabel(label: '\u94c3\u58f0'),
+                      const _SectionLabel(label: '铃声'),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(_ringtone, style: const TextStyle(fontSize: 14, color: kBrandTextSecondary)),
+                          Icon(
+                            _ringtone == 'default' ? Icons.music_note_rounded : Icons.audio_file_rounded,
+                            size: 16, color: kBrandCopper,
+                          ),
+                          const SizedBox(width: kSpace1),
+                          Text(
+                            _ringtoneTitle,
+                            style: const TextStyle(fontSize: 14, color: kBrandTextSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(width: kSpace1),
                           const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
                         ],
@@ -291,72 +340,70 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   }
 }
 
-// ── Inline time column (hour/minute with +/- buttons) ──────────────────────
+// ── Roller wheel picker for hour / minute ─────────────────────────────────
+//
+// Uses a CupertinoPicker with custom builder that highlights the selected item
+// with the brand copper colour and larger font, while dimming surrounding
+// items for a polished, iOS-style roller feel.
 
-class _TimeColumn extends StatelessWidget {
-  final String value;
-  final VoidCallback onUp;
-  final VoidCallback onDown;
+class _TimeWheel extends StatelessWidget {
+  final FixedExtentScrollController controller;
+  final int itemCount;
+  final int initialValue;
+  final ValueChanged<int> onSelectedItemChanged;
 
-  const _TimeColumn({required this.value, required this.onUp, required this.onDown});
+  const _TimeWheel({
+    required this.controller,
+    required this.itemCount,
+    required this.initialValue,
+    required this.onSelectedItemChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _ArrowButton(
-          icon: Icons.keyboard_arrow_up_rounded,
-          onTap: onUp,
-          color: colorScheme,
+    return NotificationListener<ScrollNotification>(
+      onNotification: (_) => true, // Suppress overscroll glow
+      child: CupertinoPicker(
+        scrollController: controller,
+        itemExtent: 46,
+        diameterRatio: 1.2,
+        squeeze: 1.0,
+        useMagnifier: true,
+        magnification: 1.15,
+        offAxisFraction: 0.0,
+        looping: true,
+        selectionOverlay: CupertinoPickerDefaultSelectionOverlay(
+          background: kBrandCopper.withValues(alpha: 0.08),
         ),
-        Container(
-          width: 100,
-          height: 80,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(kRadiusMd),
-          ),
-          child: Center(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w200,
-                color: colorScheme.onSurface,
-                letterSpacing: -1,
-              ),
-            ),
-          ),
-        ),
-        _ArrowButton(
-          icon: Icons.keyboard_arrow_down_rounded,
-          onTap: onDown,
-          color: colorScheme,
-        ),
-      ],
+        onSelectedItemChanged: onSelectedItemChanged,
+        children: List<Widget>.generate(itemCount, (index) {
+          return _WheelItem(value: index, total: itemCount);
+        }),
+      ),
     );
   }
 }
 
-class _ArrowButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final ColorScheme color;
+/// A single item inside the wheel.  It simply renders the padded number —
+/// the CupertinoPicker's magnifier + selectionOverlay handle the visual
+/// distinction between the selected row and its neighbours.
+class _WheelItem extends StatelessWidget {
+  final int value;
+  final int total;
 
-  const _ArrowButton({required this.icon, required this.onTap, required this.color});
+  const _WheelItem({required this.value, required this.total});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 36,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, size: 28, color: color.onSurfaceVariant),
-        splashRadius: 18,
-        padding: EdgeInsets.zero,
+    return Center(
+      child: Text(
+        value.toString().padLeft(2, '0'),
+        style: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w400,
+          color: kBrandTextPrimary,
+          letterSpacing: -0.5,
+        ),
       ),
     );
   }
@@ -411,6 +458,10 @@ class _WeekTypeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Map legacy types to display types for the dropdown
+    // once/weekends are hidden from the menu — map them to closest visible type
+    final displayValue = _toDisplayType(value);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: kSpace3, vertical: 2),
       decoration: BoxDecoration(
@@ -419,15 +470,17 @@ class _WeekTypeDropdown extends StatelessWidget {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<RepeatType>(
-          value: value,
+          value: displayValue,
           isDense: true,
           isExpanded: true,
           icon: const Icon(Icons.expand_more_rounded, color: kBrandTextSecondary),
           style: const TextStyle(fontSize: 14, color: kBrandTextPrimary),
           items: const [
-            DropdownMenuItem(value: RepeatType.once, child: Text('\u5168\u90e8')),
-            DropdownMenuItem(value: RepeatType.singleRest, child: Text('\u4ec5\u5355\u5468')),
-            DropdownMenuItem(value: RepeatType.doubleRest, child: Text('\u4ec5\u53cc\u5468')),
+            DropdownMenuItem(value: RepeatType.daily, child: Text('每天 · 周一至周日')),
+            DropdownMenuItem(value: RepeatType.weekdays, child: Text('工作日 · 周一至周五')),
+            DropdownMenuItem(value: RepeatType.singleRest, child: Text('单双休 · 单周休一天')),
+            DropdownMenuItem(value: RepeatType.doubleRest, child: Text('仅双休 · 周末全休')),
+            DropdownMenuItem(value: RepeatType.custom, child: Text('自定义 · 手动选择')),
           ],
           onChanged: (v) {
             if (v != null) onChanged(v);
@@ -435,5 +488,18 @@ class _WeekTypeDropdown extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Map any RepeatType to a value that exists in the dropdown menu.
+  /// Hidden types (once, weekends) are mapped to their closest visible equivalent.
+  static RepeatType _toDisplayType(RepeatType type) {
+    switch (type) {
+      case RepeatType.once:
+        return RepeatType.daily; // "once" (ring every day) maps to "每天"
+      case RepeatType.weekends:
+        return RepeatType.custom; // "weekends" maps to custom
+      default:
+        return type;
+    }
   }
 }

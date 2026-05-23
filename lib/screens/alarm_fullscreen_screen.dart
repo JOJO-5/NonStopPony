@@ -6,6 +6,7 @@ import '../services/alarm_notification_service.dart';
 import '../app.dart';
 
 /// Full-screen alarm overlay for lock-screen / screen-off state.
+/// Supports swipe-up to dismiss gesture in addition to button controls.
 class AlarmFullScreenScreen extends StatefulWidget {
   final int alarmId;
   final String label;
@@ -31,14 +32,16 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseCtrl;
   late AnimationController _rippleCtrl;
-  late AnimationController _slideCtrl;
+  late AnimationController _shakeCtrl;
+  late AnimationController _swipeCtrl;
   late Animation<double> _pulseAnim;
   late Animation<double> _rippleAnim;
-  late Animation<double> _slideAnim;
+  late Animation<double> _shakeAnim;
   late Timer _timer;
   DateTime _now = DateTime.now();
 
   static const _bg = Color(0xFF120A06);
+  static const _swipeThreshold = 120.0;
 
   @override
   void initState() {
@@ -57,14 +60,15 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
       CurvedAnimation(parent: _rippleCtrl, curve: Curves.easeOut),
     );
 
-    _slideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _slideAnim = CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic)
-      ..addStatusListener((s) {
-        if (s == AnimationStatus.completed) {
-          Future.delayed(const Duration(milliseconds: 100), () => _slideCtrl.reverse());
-        }
-      });
-    _slideCtrl.forward();
+    // Screen shake / vibration effect — fast, subtle, continuous
+    _shakeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))
+      ..repeat(reverse: true);
+    _shakeAnim = Tween<double>(begin: -2.5, end: 2.5).animate(
+      CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut),
+    );
+
+    // Swipe-up progress animation
+    _swipeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
@@ -75,14 +79,14 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
   void dispose() {
     _pulseCtrl.dispose();
     _rippleCtrl.dispose();
-    _slideCtrl.dispose();
+    _shakeCtrl.dispose();
+    _swipeCtrl.dispose();
     _timer.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   Future<void> _dismiss() async {
-    // Bug #2 fix: stop the ringing service when user dismisses the alarm
     await AlarmNotificationService.stopAlarmRing();
     await AlarmNotificationService().cancelAlarmNotification(widget.alarmId);
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
@@ -104,147 +108,207 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
       child: Scaffold(
         backgroundColor: _bg,
         body: SafeArea(
-          child: Stack(
-            children: [
-              // ── Ambient glow ───────────────────────────────
-              Center(
-                child: AnimatedBuilder(
-                  animation: _rippleAnim,
-                  builder: (_, __) => Container(
-                    width: 280 * _rippleAnim.value,
-                    height: 280 * _rippleAnim.value,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          kBrandCopper.withValues(alpha: 0.12 * (1.5 - _rippleAnim.value).clamp(0.0, 1.0)),
-                          Colors.transparent,
-                        ],
+          child: GestureDetector(
+            onVerticalDragUpdate: (details) {
+              if (details.delta.dy < 0) {
+                // Swiping up
+                final progress = (_swipeCtrl.value + (-details.delta.dy / _swipeThreshold)).clamp(0.0, 1.0);
+                _swipeCtrl.value = progress;
+              }
+            },
+            onVerticalDragEnd: (details) {
+              if (_swipeCtrl.value > 0.6) {
+                // Threshold reached — dismiss
+                _dismiss();
+              } else {
+                // Snap back
+                _swipeCtrl.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+              }
+            },
+            child: Stack(
+              children: [
+                // ── Ambient glow ───────────────────────────────
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _rippleAnim,
+                    builder: (_, __) => Container(
+                      width: 280 * _rippleAnim.value,
+                      height: 280 * _rippleAnim.value,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            kBrandCopper.withValues(alpha: 0.12 * (1.5 - _rippleAnim.value).clamp(0.0, 1.0)),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // ── Content column ──────────────────────────────
-              Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Top: date + label
-                  Padding(
-                    padding: const EdgeInsets.only(top: kSpace12),
-                    child: Column(
-                      children: [
-                        Text(dateStr, style: const TextStyle(color: Colors.white38, fontSize: 15, letterSpacing: 1)),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.label,
-                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w500, letterSpacing: 0.5),
-                        ),
-                      ],
+                // ── Swipe-up overlay (fade in as user swipes) ──
+                AnimatedBuilder(
+                  animation: _swipeCtrl,
+                  builder: (_, __) => IgnorePointer(
+                    child: Container(
+                      color: kBrandCopper.withValues(alpha: _swipeCtrl.value * 0.3),
                     ),
                   ),
+                ),
 
-                  // Center: pulsing clock
-                  AnimatedBuilder(
-                    animation: Listenable.merge([_pulseAnim, _rippleAnim]),
-                    builder: (_, __) => Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Ripple ring
-                        Opacity(
-                          opacity: (1.5 - _rippleAnim.value).clamp(0.0, 0.4),
-                          child: Container(
-                            width: 240 * _rippleAnim.value,
-                            height: 240 * _rippleAnim.value,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: kBrandCopper, width: 1.5),
+                // ── Shake + content column ──────────────────────
+                AnimatedBuilder(
+                  animation: _shakeAnim,
+                  builder: (_, child) => Transform.translate(
+                    offset: Offset(_shakeAnim.value, 0),
+                    child: child,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Top: date + label
+                      Padding(
+                        padding: const EdgeInsets.only(top: kSpace12),
+                        child: Column(
+                          children: [
+                            Text(dateStr, style: const TextStyle(color: Colors.white38, fontSize: 15, letterSpacing: 1)),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.label,
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w500, letterSpacing: 0.5),
                             ),
-                          ),
+                          ],
                         ),
-                        // Pulsing clock face
-                        ScaleTransition(
-                          scale: _pulseAnim,
-                          child: Container(
-                            width: 200,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF1E1008),
-                              boxShadow: [
-                                BoxShadow(color: kBrandCopper.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 10),
+                      ),
+
+                      // Center: pulsing clock
+                      AnimatedBuilder(
+                        animation: Listenable.merge([_pulseAnim, _rippleAnim]),
+                        builder: (_, __) => Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Ripple ring
+                            Opacity(
+                              opacity: (1.5 - _rippleAnim.value).clamp(0.0, 0.4),
+                              child: Container(
+                                width: 240 * _rippleAnim.value,
+                                height: 240 * _rippleAnim.value,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: kBrandCopper, width: 1.5),
+                                ),
+                              ),
+                            ),
+                            // Pulsing clock face
+                            ScaleTransition(
+                              scale: _pulseAnim,
+                              child: Container(
+                                width: 200,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF1E1008),
+                                  boxShadow: [
+                                    BoxShadow(color: kBrandCopper.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 10),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: AnalogClockWidget(
+                                    size: 168,
+                                    faceColor: const Color(0xFF1E1008),
+                                    handColor: Colors.white,
+                                    accentColor: kBrandCopper,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Bottom: time + swipe hint + buttons
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: kSpace12),
+                        child: Column(
+                          children: [
+                            Text(timeStr, style: const TextStyle(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 3)),
+                            const SizedBox(height: kSpace6),
+                            const Text('\u95f9\u949f\u54cd\u4e86', style: TextStyle(color: Colors.white24, fontSize: 13, letterSpacing: 1)),
+                            const SizedBox(height: kSpace10),
+                            // Swipe-up hint with animated arrow
+                            AnimatedBuilder(
+                              animation: _swipeCtrl,
+                              builder: (_, __) => Opacity(
+                                opacity: 1.0 - _swipeCtrl.value * 0.5,
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.keyboard_arrow_up,
+                                        color: kBrandCopper.withValues(alpha: 0.6 + _swipeCtrl.value * 0.4),
+                                        size: 28),
+                                    Text('\u4e0a\u5212\u5173\u95ed',
+                                        style: TextStyle(
+                                          color: Colors.white24,
+                                          fontSize: 12,
+                                          letterSpacing: 1,
+                                        )),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: kSpace8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Snooze button
+                                GestureDetector(
+                                  onTap: _snooze,
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: kBrandCopper, width: 2),
+                                    ),
+                                    child: const Icon(Icons.snooze_rounded, color: kBrandCopper, size: 28),
+                                  ),
+                                ),
+                                const SizedBox(width: kSpace10),
+                                // Dismiss button
+                                GestureDetector(
+                                  onTap: _dismiss,
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: kBrandCopper,
+                                      boxShadow: [
+                                        BoxShadow(color: kBrandCopper.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 6),
+                                      ],
+                                    ),
+                                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                                  ),
+                                ),
                               ],
                             ),
-                            child: Center(
-                              child: AnalogClockWidget(
-                                size: 168,
-                                faceColor: const Color(0xFF1E1008),
-                                handColor: Colors.white,
-                                accentColor: kBrandCopper,
-                              ),
+                            const SizedBox(height: kSpace5),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text('\u7a0d\u540e\u63d0\u9192', style: const TextStyle(color: Colors.white24, fontSize: 12)),
+                                const SizedBox(width: kSpace10),
+                                Text('\u5173\u95ed', style: const TextStyle(color: Colors.white24, fontSize: 12)),
+                              ],
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  // Bottom: time + dismiss
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: kSpace12),
-                    child: Column(
-                      children: [
-                        Text(timeStr, style: const TextStyle(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 3)),
-                        const SizedBox(height: kSpace6),
-                        Text('\u95f9\u949f\u54cd\u4e86', style: const TextStyle(color: Colors.white24, fontSize: 13, letterSpacing: 1)),
-                        const SizedBox(height: kSpace5),
-                        // Dismiss button
-                        SlideTransition(
-                          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(_slideAnim),
-                          child: GestureDetector(
-                            onTap: _dismiss,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: kBrandCopper,
-                                boxShadow: [
-                                  BoxShadow(color: kBrandCopper.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 6),
-                                ],
-                              ),
-                              child: const Icon(Icons.close_rounded, color: Colors.white, size: 36),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: kSpace3),
-                        Text('\u70b9\u51fb\u5173\u95ed', style: const TextStyle(color: Colors.white24, fontSize: 12)),
-                        const SizedBox(height: kSpace4),
-                        // Snooze button
-                        SlideTransition(
-                          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(_slideAnim),
-                          child: GestureDetector(
-                            onTap: _snooze,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: kBrandCopper, width: 2),
-                              ),
-                              child: const Icon(Icons.snooze_rounded, color: kBrandCopper, size: 36),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: kSpace3),
-                        Text('\u7a0d\u540e\u63d0\u9192', style: const TextStyle(color: Colors.white24, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

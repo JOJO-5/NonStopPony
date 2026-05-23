@@ -63,17 +63,19 @@ void main() {
 
     test('override takes priority over auto', () {
       final override = WeekSchedule(
+        weekIndex: 1,
         year: 2024,
         month: 1,
         weekOfMonth: 1,
         weekType: WeekType.double, // override to double
       );
-      final date = DateTime(2024, 1, 3); // weekOfMonth=1, would be auto single
+      final date = DateTime(2024, 1, 3); // weekNumber=1, would be auto single
       expect(resolveWeekType(date, [override]), WeekType.double);
     });
 
     test('override for different weekOfMonth does not apply', () {
       final override = WeekSchedule(
+        weekIndex: 2,
         year: 2024,
         month: 1,
         weekOfMonth: 2,
@@ -85,6 +87,7 @@ void main() {
 
     test('override for different month does not apply', () {
       final override = WeekSchedule(
+        weekIndex: 5,
         year: 2024,
         month: 2,
         weekOfMonth: 1,
@@ -300,6 +303,7 @@ void main() {
 
     test('respects override: forced single week makes Saturday ring', () {
       final override = WeekSchedule(
+        weekIndex: 2,
         year: 2024,
         month: 1,
         weekOfMonth: 2,

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/alarm_provider.dart';
 import '../models/alarm_info.dart';
 import '../services/alarm_notification_service.dart';
+import '../services/holiday_service.dart';
 import '../widgets/alarm_tile.dart';
 import '../app.dart';
 import 'add_edit_alarm_screen.dart';
@@ -16,15 +17,27 @@ class AlarmListScreen extends StatefulWidget {
 }
 
 class _AlarmListScreenState extends State<AlarmListScreen> {
+  HolidayInfo? _todayHoliday;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AlarmProvider>().loadAlarms();
+      _loadTodayHoliday();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AlarmNotificationService().requestAndroidPermissions();
     });
+  }
+
+  Future<void> _loadTodayHoliday() async {
+    final info = await HolidayService.getHolidayInfo(DateTime.now());
+    if (mounted && info != null) {
+      setState(() {
+        _todayHoliday = info;
+      });
+    }
   }
 
   Future<void> _navigateToAdd() async {
@@ -68,13 +81,39 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        dateStr,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (_todayHoliday != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: _todayHoliday!.isHoliday
+                                    ? kSemanticSuccess.withValues(alpha: 0.15)
+                                    : kBrandCopper.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _todayHoliday!.isHoliday
+                                    ? _todayHoliday!.name ?? '假期'
+                                    : _todayHoliday!.name ?? '补班',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _todayHoliday!.isHoliday ? kSemanticSuccess : kBrandCopper,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(

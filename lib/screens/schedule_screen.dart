@@ -32,6 +32,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final now = DateTime.now();
     _currentYear = now.year;
     _currentMonth = now.month;
+    // Load overrides once in initState so we never call loadOverrides()
+    // inside the Consumer builder (which would cause re-entrant builds).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ScheduleProvider>();
+      if (!provider.loaded) {
+        provider.loadOverrides();
+      }
+    });
   }
 
   @override
@@ -46,7 +54,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       body: Consumer<ScheduleProvider>(
         builder: (context, provider, _) {
           if (!provider.loaded) {
-            provider.loadOverrides();
             return const Center(child: CircularProgressIndicator());
           }
 

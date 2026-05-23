@@ -1,0 +1,426 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1779371102406,
+  "projectRoot": "D:\\mengfanliuFile\\dev\\clound\\alarm_clock",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "lib",
+      "test"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "android": {
+      "path": "android",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1779371102375,
+      "keyFiles": [
+        "alarm_clock_android.iml",
+        "build.gradle.kts",
+        "gradle.properties",
+        "gradlew",
+        "gradlew.bat"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 1,
+      "lastAccessed": 1779371102376,
+      "keyFiles": [
+        "b9dbe592fc2ae558329e0a126bb30b5a.cache.dill.track.dill"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1779371102377,
+      "keyFiles": []
+    },
+    "ios": {
+      "path": "ios",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1779371102378,
+      "keyFiles": []
+    },
+    "lib": {
+      "path": "lib",
+      "purpose": "Library code",
+      "fileCount": 2,
+      "lastAccessed": 1779371102378,
+      "keyFiles": [
+        "app.dart",
+        "main.dart"
+      ]
+    },
+    "linux": {
+      "path": "linux",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1779371102379,
+      "keyFiles": [
+        "CMakeLists.txt"
+      ]
+    },
+    "macos": {
+      "path": "macos",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1779371102379,
+      "keyFiles": []
+    },
+    "prototype": {
+      "path": "prototype",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1779371102379,
+      "keyFiles": [
+        "alarm-clock-prototype.html"
+      ]
+    },
+    "test": {
+      "path": "test",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1779371102380,
+      "keyFiles": [
+        "widget_test.dart"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1779371102380,
+      "keyFiles": [
+        "favicon.png",
+        "index.html",
+        "manifest.json"
+      ]
+    },
+    "windows": {
+      "path": "windows",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1779371102380,
+      "keyFiles": [
+        "CMakeLists.txt"
+      ]
+    },
+    "android\\app": {
+      "path": "android\\app",
+      "purpose": "Application code",
+      "fileCount": 1,
+      "lastAccessed": 1779371102381,
+      "keyFiles": [
+        "build.gradle.kts"
+      ]
+    },
+    "build\\app": {
+      "path": "build\\app",
+      "purpose": "Application code",
+      "fileCount": 0,
+      "lastAccessed": 1779371102381,
+      "keyFiles": []
+    },
+    "lib\\models": {
+      "path": "lib\\models",
+      "purpose": "Data models",
+      "fileCount": 2,
+      "lastAccessed": 1779371102383,
+      "keyFiles": [
+        "alarm_info.dart",
+        "week_schedule.dart"
+      ]
+    },
+    "lib\\services": {
+      "path": "lib\\services",
+      "purpose": "Business logic services",
+      "fileCount": 5,
+      "lastAccessed": 1779371102383,
+      "keyFiles": [
+        "alarm_notification_service.dart",
+        "alarm_scheduler_service.dart",
+        "alarm_storage_service.dart"
+      ]
+    },
+    "lib\\utils": {
+      "path": "lib\\utils",
+      "purpose": "Utility functions",
+      "fileCount": 1,
+      "lastAccessed": 1779371102383,
+      "keyFiles": [
+        "date_utils.dart"
+      ]
+    },
+    "test\\models": {
+      "path": "test\\models",
+      "purpose": "Data models",
+      "fileCount": 2,
+      "lastAccessed": 1779371102385,
+      "keyFiles": [
+        "alarm_info_test.dart",
+        "week_schedule_test.dart"
+      ]
+    },
+    "test\\services": {
+      "path": "test\\services",
+      "purpose": "Business logic services",
+      "fileCount": 3,
+      "lastAccessed": 1779371102385,
+      "keyFiles": [
+        "alarm_scheduler_service_test.dart",
+        "alarm_storage_service_test.dart",
+        "schedule_storage_service_test.dart"
+      ]
+    },
+    "test\\utils": {
+      "path": "test\\utils",
+      "purpose": "Utility functions",
+      "fileCount": 1,
+      "lastAccessed": 1779371102386,
+      "keyFiles": [
+        "date_utils_test.dart"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "lib\\services\\alarm_notification_service.dart",
+      "accessCount": 35,
+      "lastAccessed": 1779377056293,
+      "type": "file"
+    },
+    {
+      "path": "lib\\services\\alarm_scheduler_service.dart",
+      "accessCount": 20,
+      "lastAccessed": 1779376304871,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 11,
+      "lastAccessed": 1779375251348,
+      "type": "directory"
+    },
+    {
+      "path": "lib\\screens\\settings_screen.dart",
+      "accessCount": 11,
+      "lastAccessed": 1779375616028,
+      "type": "file"
+    },
+    {
+      "path": "lib\\main.dart",
+      "accessCount": 9,
+      "lastAccessed": 1779375307514,
+      "type": "file"
+    },
+    {
+      "path": "android\\app\\src\\main\\AndroidManifest.xml",
+      "accessCount": 9,
+      "lastAccessed": 1779376570889,
+      "type": "file"
+    },
+    {
+      "path": "lib\\screens\\timer_screen.dart",
+      "accessCount": 7,
+      "lastAccessed": 1779372843255,
+      "type": "file"
+    },
+    {
+      "path": "lib\\models\\alarm_info.dart",
+      "accessCount": 7,
+      "lastAccessed": 1779374781070,
+      "type": "file"
+    },
+    {
+      "path": "lib\\screens\\alarm_list_screen.dart",
+      "accessCount": 7,
+      "lastAccessed": 1779376316463,
+      "type": "file"
+    },
+    {
+      "path": "android\\app\\src\\main\\kotlin\\com\\example\\alarm_clock\\MainActivity.kt",
+      "accessCount": 6,
+      "lastAccessed": 1779375872031,
+      "type": "file"
+    },
+    {
+      "path": "lib\\providers\\alarm_provider.dart",
+      "accessCount": 6,
+      "lastAccessed": 1779376275773,
+      "type": "file"
+    },
+    {
+      "path": "lib\\services\\alarm_storage_service.dart",
+      "accessCount": 5,
+      "lastAccessed": 1779374860026,
+      "type": "file"
+    },
+    {
+      "path": "lib\\services\\boot_receiver_service.dart",
+      "accessCount": 4,
+      "lastAccessed": 1779375284552,
+      "type": "file"
+    },
+    {
+      "path": "lib\\screens\\add_edit_alarm_screen.dart",
+      "accessCount": 4,
+      "lastAccessed": 1779375286459,
+      "type": "file"
+    },
+    {
+      "path": "lib\\utils\\date_utils.dart",
+      "accessCount": 3,
+      "lastAccessed": 1779374369343,
+      "type": "file"
+    },
+    {
+      "path": "pubspec.yaml",
+      "accessCount": 2,
+      "lastAccessed": 1779373662714,
+      "type": "file"
+    },
+    {
+      "path": "android",
+      "accessCount": 2,
+      "lastAccessed": 1779374518526,
+      "type": "directory"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1779371188852,
+      "type": "file"
+    },
+    {
+      "path": "AGENTS.md",
+      "accessCount": 1,
+      "lastAccessed": 1779371189001,
+      "type": "file"
+    },
+    {
+      "path": "lib\\app.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779371220574,
+      "type": "file"
+    },
+    {
+      "path": "lib\\models\\week_schedule.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779371221172,
+      "type": "file"
+    },
+    {
+      "path": "lib\\providers\\schedule_provider.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779371238984,
+      "type": "file"
+    },
+    {
+      "path": "lib\\screens\\home_screen.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779371239113,
+      "type": "file"
+    },
+    {
+      "path": "analysis_options.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1779371239175,
+      "type": "file"
+    },
+    {
+      "path": "lib\\services\\schedule_storage_service.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779371251199,
+      "type": "file"
+    },
+    {
+      "path": "docs\\superpowers\\plans\\2026-05-20-alarm-clock.md",
+      "accessCount": 1,
+      "lastAccessed": 1779371251264,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\JOJO\\AppData\\Local\\Temp\\claude\\D--mengfanliuFile-dev-clound-alarm-clock\\d90045d5-7473-4d84-b1eb-066dec420631\\tasks\\bfb9ebwqh.output",
+      "accessCount": 1,
+      "lastAccessed": 1779371869104,
+      "type": "file"
+    },
+    {
+      "path": "lib\\providers\\timer_provider.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779372123282,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\JOJO\\AppData\\Local\\Temp\\claude\\D--mengfanliuFile-dev-clound-alarm-clock\\d90045d5-7473-4d84-b1eb-066dec420631\\tasks\\bqz93rmmb.output",
+      "accessCount": 1,
+      "lastAccessed": 1779373854095,
+      "type": "file"
+    },
+    {
+      "path": "lib",
+      "accessCount": 1,
+      "lastAccessed": 1779374695075,
+      "type": "directory"
+    },
+    {
+      "path": "android\\app\\src\\main\\kotlin\\com\\example\\alarm_clock\\BootReceiver.kt",
+      "accessCount": 1,
+      "lastAccessed": 1779375391100,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\JOJO\\AppData\\Local\\Temp\\claude\\D--mengfanliuFile-dev-clound-alarm-clock\\63127d13-64ca-4958-aa34-d977620bb2e6\\tasks\\bv636dgly.output",
+      "accessCount": 1,
+      "lastAccessed": 1779375896020,
+      "type": "file"
+    },
+    {
+      "path": "lib\\widgets\\alarm_tile.dart",
+      "accessCount": 1,
+      "lastAccessed": 1779376264878,
+      "type": "file"
+    },
+    {
+      "path": "lib\\services",
+      "accessCount": 1,
+      "lastAccessed": 1779376281970,
+      "type": "directory"
+    },
+    {
+      "path": "C:\\Users\\JOJO\\AppData\\Local\\Temp\\claude\\D--mengfanliuFile-dev-clound-alarm-clock\\63127d13-64ca-4958-aa34-d977620bb2e6\\tasks\\bzitgc0vo.output",
+      "accessCount": 1,
+      "lastAccessed": 1779376417982,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

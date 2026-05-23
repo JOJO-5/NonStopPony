@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/alarm_info.dart';
 import '../models/week_schedule.dart';
-import '../utils/date_utils.dart';
+import '../providers/schedule_provider.dart';
 import '../app.dart';
 
 /// A tile displaying a single alarm with large time, repeat info, and toggle.
@@ -73,7 +74,7 @@ class AlarmTile extends StatelessWidget {
                     child: Switch(
                       value: isActive,
                       onChanged: (_) => onToggle(),
-                      activeColor: kBrandCopper,
+                      activeThumbColor: kBrandCopper,
                       activeTrackColor: kBrandCopper.withValues(alpha: 0.3),
                       inactiveThumbColor: colorScheme.outline,
                       inactiveTrackColor: colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -146,7 +147,7 @@ class _MetaRow extends StatelessWidget {
       badges.add(_Badge(text: repeatText, outlined: true));
     }
 
-    final weekBadge = _weekBadge(alarm);
+    final weekBadge = _weekBadge(context, alarm);
     if (weekBadge != null) {
       badges.add(weekBadge);
     }
@@ -180,10 +181,13 @@ class _MetaRow extends StatelessWidget {
     }
   }
 
-  Widget? _weekBadge(AlarmInfo a) {
+  Widget? _weekBadge(BuildContext context, AlarmInfo a) {
     if (a.repeatType != RepeatType.singleRest && a.repeatType != RepeatType.doubleRest) return null;
     final now = DateTime.now();
-    final wt = resolveWeekType(now, []);
+    // Use ScheduleProvider's resolveWeekTypeByDate which includes overrides,
+    // NOT the top-level resolveWeekType() with empty overrides list.
+    final provider = context.watch<ScheduleProvider>();
+    final wt = provider.resolveWeekTypeByDate(now);
     final isSingle = wt == WeekType.single;
 
     if (a.repeatType == RepeatType.singleRest) {

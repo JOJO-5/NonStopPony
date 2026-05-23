@@ -27,8 +27,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getIntExtra("alarmId", -1)
         val title = intent.getStringExtra("title") ?: "战马闹钟"
         val body = intent.getStringExtra("body") ?: "闹钟响了"
+        val ringtoneUri = intent.getStringExtra("ringtoneUri") ?: "default"
 
-        Log.d(TAG, "Alarm fired! alarmId=$alarmId, title=$title")
+        Log.d(TAG, "Alarm fired! alarmId=$alarmId, title=$title, ringtoneUri=$ringtoneUri")
 
         // Start the AlarmRingingService for continuous sound + vibration
         val serviceIntent = Intent(context, AlarmRingingService::class.java).apply {
@@ -36,6 +37,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("alarmId", alarmId)
             putExtra("title", title)
             putExtra("body", body)
+            putExtra("ringtoneUri", ringtoneUri)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

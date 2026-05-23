@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/alarm_info.dart';
 import '../models/week_schedule.dart';
 import '../utils/date_utils.dart';
 import 'alarm_notification_service.dart';
+import 'holiday_service.dart';
 
 /// Service for calculating next alarm trigger times and managing alarm scheduling.
 ///
@@ -14,20 +17,8 @@ class AlarmSchedulerService {
   ///
   /// Returns `null` if no valid trigger date is found within 365 days.
   ///
-  /// For [RepeatType.once] alarms: if the alarm time has already passed
-  /// today, returns `null`. Otherwise returns today at the alarm time.
-  ///
-  /// For [RepeatType.daily]: returns the next occurrence (today if time not
-  /// passed, tomorrow otherwise).
-  ///
-  /// For [RepeatType.weekdays]: finds the next Mon-Fri where [shouldRingOnDate]
-  /// passes.
-  ///
-  /// For [RepeatType.weekends]: finds the next Sat or Sun where
-  /// [shouldRingOnDate] passes.
-  ///
-  /// For [RepeatType.custom]: checks each day in [AlarmInfo.weekdays] for
-  /// the next match where [shouldRingOnDate] passes.
+  /// Now integrates with [HolidayService] to check statutory holidays
+  /// (rest days → don't ring) and make-up workdays (补班 → ring).
   static Future<DateTime?> calculateNextTrigger(
     AlarmInfo alarm, {
     List<WeekSchedule>? overrides,
@@ -37,39 +28,53 @@ class AlarmSchedulerService {
     final today = DateTime(now.year, now.month, now.day);
     final alarmTimeToday = DateTime(today.year, today.month, today.day, alarm.hour, alarm.minute);
 
+    // Start date for search
+    DateTime start;
     switch (alarm.repeatType) {
       case RepeatType.once:
-        // For a one-time alarm we look at today first; if that time has already
-        // passed we try tomorrow. This handles the common case of setting an
-        // alarm late at night for the following morning.
         if (now.isBefore(alarmTimeToday)) {
           return alarmTimeToday;
         }
-        final alarmTimeTomorrow = alarmTimeToday.add(const Duration(days: 1));
-        return alarmTimeTomorrow;
-
+        return alarmTimeToday.add(const Duration(days: 1));
       case RepeatType.daily:
-        // Daily: next occurrence
-        final start = now.isBefore(alarmTimeToday) ? today : today.add(Duration(days: 1));
-        return nextAlarmDate(alarm, effectiveOverrides, from: start);
-
+        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
+        break;
       case RepeatType.weekdays:
-        // Weekdays: find next Mon-Fri
-        return _findNextWeekday(alarm, effectiveOverrides, from: now);
-
+        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
+        break;
       case RepeatType.weekends:
-        // Weekends: find next Sat or Sun
-        return _findNextWeekend(alarm, effectiveOverrides, from: now);
-
+        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
+        break;
       case RepeatType.singleRest:
       case RepeatType.doubleRest:
       case RepeatType.custom:
-        // Start from today if alarm time hasn't passed, else tomorrow.
-        // Prevents silently skipping when the configured time for today
-        // has already passed.
-        final start = now.isBefore(alarmTimeToday) ? today : today.add(Duration(days: 1));
-        return nextAlarmDate(alarm, effectiveOverrides, from: start);
+        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
+        break;
     }
+
+    // Search with holiday/workday checks
+    for (int i = 0; i < 365; i++) {
+      final candidate = start.add(Duration(days: i));
+
+      // Check holiday/workday status
+      bool? isHoliday;
+      bool? isWorkday;
+      try {
+        isHoliday = await HolidayService.isHoliday(candidate);
+        isWorkday = await HolidayService.isWorkday(candidate);
+      } catch (e) {
+        debugPrint('Holiday check failed for $candidate: $e');
+      }
+
+      if (shouldRingOnDate(alarm, candidate, effectiveOverrides,
+          isHoliday: isHoliday, isWorkday: isWorkday)) {
+        return DateTime(
+          candidate.year, candidate.month, candidate.day,
+          alarm.hour, alarm.minute, 0,
+        );
+      }
+    }
+    return null;
   }
 
   /// Calculates all trigger times within the next 7 days for the given [alarm].
@@ -143,7 +148,7 @@ class AlarmSchedulerService {
     } catch (e) {
       // Android 14+ may reject exact scheduling without permission.
       // Fall back to inexact mode which works unconditionally.
-      print('Exact alarm scheduling failed, falling back to inexact: $e');
+      debugPrint('Exact alarm scheduling failed, falling back to inexact: $e');
       try {
         await AlarmNotificationService().scheduleAlarmNotification(
           alarmId: alarm.id!,
@@ -154,7 +159,7 @@ class AlarmSchedulerService {
           ringtone: alarm.ringtone,
         );
       } catch (e2) {
-        print('Failed to schedule alarm ${alarm.id} (inexact too): $e2');
+        debugPrint('Failed to schedule alarm ${alarm.id} (inexact too): $e2');
       }
     }
   }
@@ -179,56 +184,9 @@ class AlarmSchedulerService {
         await scheduleAlarm(alarm, overrides: overrides);
       } catch (e) {
         // Log and continue — don't let one bad alarm take down the rest
-        print('Failed to schedule alarm ${alarm.id}: $e');
+        debugPrint('Failed to schedule alarm ${alarm.id}: $e');
       }
     }
   }
 
-  /// Finds the next weekday (Mon-Fri) where [shouldRingOnDate] returns true.
-  static DateTime? _findNextWeekday(
-    AlarmInfo alarm,
-    List<WeekSchedule> overrides, {
-    required DateTime from,
-  }) {
-    final start = DateTime(from.year, from.month, from.day);
-    for (int i = 0; i < 365; i++) {
-      final candidate = start.add(Duration(days: i));
-      if (candidate.weekday >= DateTime.monday &&
-          candidate.weekday <= DateTime.friday &&
-          shouldRingOnDate(alarm, candidate, overrides)) {
-        return DateTime(
-          candidate.year,
-          candidate.month,
-          candidate.day,
-          alarm.hour,
-          alarm.minute,
-        );
-      }
-    }
-    return null;
-  }
-
-  /// Finds the next weekend day (Sat or Sun) where [shouldRingOnDate] returns true.
-  static DateTime? _findNextWeekend(
-    AlarmInfo alarm,
-    List<WeekSchedule> overrides, {
-    required DateTime from,
-  }) {
-    final start = DateTime(from.year, from.month, from.day);
-    for (int i = 0; i < 365; i++) {
-      final candidate = start.add(Duration(days: i));
-      if ((candidate.weekday == DateTime.saturday ||
-              candidate.weekday == DateTime.sunday) &&
-          shouldRingOnDate(alarm, candidate, overrides)) {
-        return DateTime(
-          candidate.year,
-          candidate.month,
-          candidate.day,
-          alarm.hour,
-          alarm.minute,
-        );
-      }
-    }
-    return null;
-  }
 }

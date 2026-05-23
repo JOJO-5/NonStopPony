@@ -9,6 +9,7 @@ import 'providers/stopwatch_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/alarm_fullscreen_screen.dart';
+import 'screens/timer_fullscreen_screen.dart';
 import 'services/alarm_notification_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,6 +183,7 @@ class AlarmClockApp extends StatelessWidget {
             label: (args['label'] as String?) ?? '\u6218\u9a6c\u95f9\u949f',
           );
         },
+        '/timer_ringing': (ctx) => const TimerFullScreenScreen(),
       },
       home: MultiProvider(
         providers: [

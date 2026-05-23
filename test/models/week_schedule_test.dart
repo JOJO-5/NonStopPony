@@ -8,6 +8,7 @@ void main() {
         final createdAt = DateTime(2026, 5, 20, 10, 30);
         final schedule = WeekSchedule(
           id: 1,
+          weekIndex: 1,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -25,6 +26,7 @@ void main() {
 
       test('creates without id (new record)', () {
         final schedule = WeekSchedule(
+          weekIndex: 2,
           year: 2026,
           month: 6,
           weekOfMonth: 1,
@@ -42,6 +44,7 @@ void main() {
       test('defaults createdAt to DateTime.now()', () {
         final before = DateTime.now();
         final schedule = WeekSchedule(
+          weekIndex: 3,
           year: 2026,
           month: 7,
           weekOfMonth: 2,
@@ -58,6 +61,7 @@ void main() {
       test('round-trip preserves all fields', () {
         final original = WeekSchedule(
           id: 42,
+          weekIndex: 4,
           year: 2026,
           month: 3,
           weekOfMonth: 4,
@@ -78,6 +82,7 @@ void main() {
 
       test('round-trip without id', () {
         final original = WeekSchedule(
+          weekIndex: 5,
           year: 2026,
           month: 12,
           weekOfMonth: 5,
@@ -94,6 +99,7 @@ void main() {
       test('fromMap handles WeekType by index', () {
         final map = {
           'id': 1,
+          'weekIndex': 6,
           'year': 2026,
           'month': 1,
           'weekOfMonth': 1,
@@ -111,6 +117,7 @@ void main() {
         final createdAt = DateTime(2026, 5, 20);
         final a = WeekSchedule(
           id: 1,
+          weekIndex: 7,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -119,6 +126,7 @@ void main() {
         );
         final b = WeekSchedule(
           id: 1,
+          weekIndex: 7,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -134,6 +142,7 @@ void main() {
         final createdAt = DateTime(2026, 5, 20);
         final a = WeekSchedule(
           id: 1,
+          weekIndex: 8,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -142,6 +151,7 @@ void main() {
         );
         final b = WeekSchedule(
           id: 2,
+          weekIndex: 8,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -156,6 +166,7 @@ void main() {
         final createdAt = DateTime(2026, 5, 20);
         final a = WeekSchedule(
           id: 1,
+          weekIndex: 9,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -164,6 +175,7 @@ void main() {
         );
         final b = WeekSchedule(
           id: 1,
+          weekIndex: 9,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -179,6 +191,7 @@ void main() {
       test('copies with id override', () {
         final original = WeekSchedule(
           id: 1,
+          weekIndex: 10,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -198,6 +211,7 @@ void main() {
       test('copies with all fields override', () {
         final original = WeekSchedule(
           id: 1,
+          weekIndex: 11,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
@@ -225,6 +239,7 @@ void main() {
       test('copyWith returns equivalent object when no args', () {
         final original = WeekSchedule(
           id: 1,
+          weekIndex: 12,
           year: 2026,
           month: 5,
           weekOfMonth: 3,
