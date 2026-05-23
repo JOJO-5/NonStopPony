@@ -45,8 +45,6 @@ class _TimerScreenState extends State<TimerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When the app resumes from background, sync the timer from the
-    // stored end time to correct any drift caused by Doze/background pauses.
     if (state == AppLifecycleState.resumed) {
       final provider = context.read<TimerProvider>();
       provider.syncFromEndTime();
@@ -60,16 +58,23 @@ class _TimerScreenState extends State<TimerScreen>
     HapticFeedback.heavyImpact();
 
     try {
-      // Start the timer ringing service (sound + vibration) via native channel
       const channel = MethodChannel('com.example.alarm_clock/timer_background');
       await channel.invokeMethod('startTimerRing');
     } catch (e) {
       debugPrint('Timer ring start error: $e');
     }
 
-    // Show the full-screen timer UI
-    if (mounted) {
-      TimerFullScreenScreen.push(context);
+    if (mounted && context.read<TimerProvider>().state == TimerState.finished) {
+      final provider = context.read<TimerProvider>();
+      final dismissed = await TimerFullScreenScreen.push(context);
+      if (dismissed && mounted && provider.state == TimerState.finished) {
+        _hasPlayedFinishSound = false;
+        _finishController.reset();
+        provider.reset();
+      } else if (dismissed && mounted) {
+        _hasPlayedFinishSound = false;
+        _finishController.reset();
+      }
     }
   }
 
@@ -205,12 +210,14 @@ class _TimerScreenState extends State<TimerScreen>
                     trackColor: const Color(0xFFF0EDE8),
                     progressColor: _kAccent,
                   ),
-                  child: ScaleTransition(
-                    scale: CurvedAnimation(
-                      parent: _finishController,
-                      curve: Curves.elasticOut,
+                  child: Center(
+                    child: ScaleTransition(
+                      scale: CurvedAnimation(
+                        parent: _finishController,
+                        curve: Curves.elasticOut,
+                      ),
+                      child: child,
                     ),
-                    child: child,
                   ),
                 );
               },

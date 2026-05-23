@@ -43,6 +43,12 @@ class AlarmInfo {
   final String ringtone;  // URI string: 'default' for built-in, or content:// / file:// URI
   final String ringtoneTitle;  // Display name for the ringtone
 
+  /// Separate wake-up time for Saturday (only used when [repeatType] is
+  /// [RepeatType.singleRest] and week type resolves to single-rest).
+  /// Defaults to same as [hour]/[minute] when not set.
+  final int saturdayHour;
+  final int saturdayMinute;
+
   AlarmInfo.create({
     this.id,
     required this.hour,
@@ -55,7 +61,11 @@ class AlarmInfo {
     this.isEnabled = true,
     this.ringtone = 'default',
     this.ringtoneTitle = '默认',
-  }) : weekdays = weekdays ?? [];
+    int? saturdayHour,
+    int? saturdayMinute,
+  })  : weekdays = weekdays ?? [],
+        saturdayHour = saturdayHour ?? hour,
+        saturdayMinute = saturdayMinute ?? minute;
 
   AlarmInfo({
     this.id,
@@ -69,7 +79,10 @@ class AlarmInfo {
     required this.isEnabled,
     this.ringtone = 'default',
     this.ringtoneTitle = '默认',
-  });
+    int? saturdayHour,
+    int? saturdayMinute,
+  })  : saturdayHour = saturdayHour ?? hour,
+        saturdayMinute = saturdayMinute ?? minute;
 
   Map<String, dynamic> toMap() {
     return {
@@ -84,6 +97,8 @@ class AlarmInfo {
       'isEnabled': isEnabled ? 1 : 0,
       'ringtone': ringtone,
       'ringtoneTitle': ringtoneTitle,
+      'saturdayHour': saturdayHour,
+      'saturdayMinute': saturdayMinute,
     };
   }
 
@@ -105,6 +120,8 @@ class AlarmInfo {
       isEnabled: (map['isEnabled'] as int) == 1,
       ringtone: map['ringtone'] as String? ?? 'default',
       ringtoneTitle: map['ringtoneTitle'] as String? ?? '默认',
+      saturdayHour: map['saturdayHour'] as int? ?? (map['hour'] as int),
+      saturdayMinute: map['saturdayMinute'] as int? ?? (map['minute'] as int),
     );
   }
 
@@ -120,6 +137,8 @@ class AlarmInfo {
     bool? isEnabled,
     String? ringtone,
     String? ringtoneTitle,
+    int? saturdayHour,
+    int? saturdayMinute,
   }) {
     return AlarmInfo(
       id: id ?? this.id,
@@ -133,6 +152,8 @@ class AlarmInfo {
       isEnabled: isEnabled ?? this.isEnabled,
       ringtone: ringtone ?? this.ringtone,
       ringtoneTitle: ringtoneTitle ?? this.ringtoneTitle,
+      saturdayHour: saturdayHour ?? this.saturdayHour,
+      saturdayMinute: saturdayMinute ?? this.saturdayMinute,
     );
   }
 }

@@ -35,9 +35,13 @@ class TimerProvider extends ChangeNotifier {
 
   double get progress {
     if (_totalSeconds == 0) return 0.0;
-    // Elapsed time ratio (0→1): ring fills clockwise from top
     return (_totalSeconds - _remainingSeconds) / _totalSeconds;
   }
+
+  /// Whether the stored [endTime] is in the past (timer should have finished
+  /// but [syncFromEndTime] may not have been called yet).
+  bool get hasExpiredEndTime =>
+      _endTime != null && DateTime.now().isAfter(_endTime!);
 
   void setDuration(int seconds) {
     if (_state != TimerState.idle && _state != TimerState.finished) return;

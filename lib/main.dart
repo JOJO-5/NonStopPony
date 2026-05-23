@@ -29,6 +29,14 @@ _AlarmNavigation? _pendingAlarmNav;
 /// Whether a timer full-screen navigation is pending.
 bool _pendingTimerNav = false;
 
+/// Debounce timestamps: prevents double-push when both contentPendingIntent
+/// and fullScreenPendingIntent fire simultaneously on the lock screen.
+/// Both intents trigger onNewIntent → checkTimerLaunch/checkAlarmLaunch →
+/// MethodChannel → _navigateTo*Screen within milliseconds of each other,
+/// pushing two instances of the same fullscreen onto the Navigator stack.
+DateTime? _lastTimerNavTime;
+DateTime? _lastAlarmNavTime;
+
 /// Holds alarm info for deferred navigation.
 class _AlarmNavigation {
   final int alarmId;
@@ -39,6 +47,16 @@ class _AlarmNavigation {
 /// Try to navigate to the full-screen alarm screen.
 /// If Navigator isn't ready, cache the request for later.
 void _navigateToAlarmScreen(int alarmId, String label) {
+  // Debounce: ignore duplicate calls within 2s (contentPendingIntent +
+  // fullScreenPendingIntent both fire on lock screen)
+  final now = DateTime.now();
+  if (_lastAlarmNavTime != null &&
+      now.difference(_lastAlarmNavTime!) < const Duration(seconds: 2)) {
+    debugPrint('Debounced duplicate alarm navigation');
+    return;
+  }
+  _lastAlarmNavTime = now;
+
   final state = alarmNavigatorKey.currentState;
   if (state != null && state.mounted) {
     _pushAlarmScreen(state, alarmId, label);
@@ -54,6 +72,40 @@ void _navigateToAlarmScreen(int alarmId, String label) {
 /// Try to navigate to the full-screen timer screen.
 /// If Navigator isn't ready, cache the request for later.
 void _navigateToTimerScreen() {
+  final now = DateTime.now();
+  if (_lastTimerNavTime != null &&
+      now.difference(_lastTimerNavTime!) < const Duration(seconds: 2)) {
+    debugPrint('Debounced duplicate timer navigation');
+    return;
+  }
+  _lastTimerNavTime = now;
+
+  // If TimerProvider has already handled the timer finish (inline UI
+  // showing via syncFromEndTime → _playFinishSound will push Navigator),
+  // skip the native push to avoid duplicate fullscreen on lock screen.
+  // If endTime expired but syncFromEndTime hasn't run yet (race), trigger
+  // it so Dart side shows the UI and pushes Navigator.
+  try {
+    final navigatorState = alarmNavigatorKey.currentState;
+    if (navigatorState != null && navigatorState.mounted) {
+      final tp = navigatorState.context.read<TimerProvider>();
+
+      if (tp.state == TimerState.finished) {
+        debugPrint('Timer already finished (Dart handling), skipping push');
+        _pendingTimerNav = false;
+        return;
+      }
+
+      if (tp.hasExpiredEndTime) {
+        debugPrint('Timer expired — triggering syncFromEndTime');
+        tp.syncFromEndTime();
+        _pendingTimerNav = false;
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // App was killed and recovered, or timer just expired — push fullscreen
   final state = alarmNavigatorKey.currentState;
   if (state != null && state.mounted) {
     TimerFullScreenScreen.push(state.context);

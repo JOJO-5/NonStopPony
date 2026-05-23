@@ -61,6 +61,17 @@ class MainActivity : FlutterActivity() {
                     val isIgnoring = pm.isIgnoringBatteryOptimizations(packageName)
                     result.success(isIgnoring)
                 }
+                "openMiuiPermissionEditor" -> {
+                    // Open standard Android app info page.
+                    // On HyperOS/MIUI: tap "其他权限" → find "后台弹出界面" / "锁屏显示"
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = android.net.Uri.fromParts("package", packageName, null)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                    Log.d(TAG, "Opened app details settings for MIUI permission access")
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

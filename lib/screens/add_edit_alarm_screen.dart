@@ -18,6 +18,7 @@ class AddEditAlarmScreen extends StatefulWidget {
 
 class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   late int _hour, _minute;
+  late int _saturdayHour, _saturdayMinute;
   late List<int> _selectedDays;
   late RepeatType _repeatType;
   late TextEditingController _labelController;
@@ -28,6 +29,8 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   /// Fixed extent controllers for the hour and minute pickers.
   late FixedExtentScrollController _hourController;
   late FixedExtentScrollController _minuteController;
+  late FixedExtentScrollController _satHourController;
+  late FixedExtentScrollController _satMinuteController;
 
   bool get _isEditing => widget.alarm != null;
 
@@ -37,6 +40,8 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     final a = widget.alarm;
     _hour = a?.hour ?? 7;
     _minute = a?.minute ?? 0;
+    _saturdayHour = a?.saturdayHour ?? 8;
+    _saturdayMinute = a?.saturdayMinute ?? 0;
     _selectedDays = a != null ? List<int>.from(a.weekdays) : [];
     _repeatType = a?.repeatType ?? RepeatType.once;
     _labelController = TextEditingController(text: a?.label ?? '');
@@ -46,12 +51,16 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     // Initialise scroll controllers so the wheels start at the correct value.
     _hourController = FixedExtentScrollController(initialItem: _hour);
     _minuteController = FixedExtentScrollController(initialItem: _minute);
+    _satHourController = FixedExtentScrollController(initialItem: _saturdayHour);
+    _satMinuteController = FixedExtentScrollController(initialItem: _saturdayMinute);
   }
 
   @override
   void dispose() {
     _hourController.dispose();
     _minuteController.dispose();
+    _satHourController.dispose();
+    _satMinuteController.dispose();
     _labelController.dispose();
     super.dispose();
   }
@@ -69,6 +78,8 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
         label: _labelController.text.isEmpty ? null : _labelController.text,
         ringtone: _ringtone,
         ringtoneTitle: _ringtoneTitle,
+        saturdayHour: _saturdayHour,
+        saturdayMinute: _saturdayMinute,
       );
       final provider = context.read<AlarmProvider>();
       if (_isEditing) {
@@ -185,6 +196,46 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                 ],
               ),
             ),
+
+            const SizedBox(height: kSpace3),
+
+            // ── Saturday time picker (only for singleRest) ──
+            if (_repeatType == RepeatType.singleRest)
+              _SectionCard(
+                child: Column(
+                  children: [
+                    const Text('周六起床时间（单休周）', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kBrandCopper)),
+                    const SizedBox(height: kSpace2),
+                    SizedBox(
+                      height: 160,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _TimeWheel(
+                              controller: _satHourController,
+                              itemCount: 24,
+                              initialValue: _saturdayHour,
+                              onSelectedItemChanged: (i) => setState(() => _saturdayHour = i),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(':', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: kBrandCopper, height: 1.0)),
+                          ),
+                          Expanded(
+                            child: _TimeWheel(
+                              controller: _satMinuteController,
+                              itemCount: 60,
+                              initialValue: _saturdayMinute,
+                              onSelectedItemChanged: (i) => setState(() => _saturdayMinute = i),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             const SizedBox(height: kSpace3),
 

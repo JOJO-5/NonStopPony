@@ -26,7 +26,7 @@ class AlarmSchedulerService {
     final effectiveOverrides = overrides ?? [];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final alarmTimeToday = DateTime(today.year, today.month, today.day, alarm.hour, alarm.minute);
+    final alarmTimeToday = alarmTimeForDate(alarm, today, effectiveOverrides);
 
     // Start date for search
     DateTime start;
@@ -68,10 +68,7 @@ class AlarmSchedulerService {
 
       if (shouldRingOnDate(alarm, candidate, effectiveOverrides,
           isHoliday: isHoliday, isWorkday: isWorkday)) {
-        return DateTime(
-          candidate.year, candidate.month, candidate.day,
-          alarm.hour, alarm.minute, 0,
-        );
+        return alarmTimeForDate(alarm, candidate, effectiveOverrides);
       }
     }
     return null;
@@ -128,10 +125,7 @@ class AlarmSchedulerService {
     if (nextDate == null) return;
 
     // combine the date with the alarm's hour:minute
-    final scheduledDate = DateTime(
-      nextDate.year, nextDate.month, nextDate.day,
-      alarm.hour, alarm.minute, 0,
-    );
+    final scheduledDate = alarmTimeForDate(alarm, nextDate, overrides ?? []);
 
     // safety: if still in the past, skip (e.g. one-time alarm already fired)
     if (scheduledDate.isBefore(DateTime.now())) return;

@@ -420,12 +420,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: kSpace2),
+          _PermissionButton(
+            icon: Icons.open_in_new_rounded,
+            label: '后台弹出界面',
+            desc: '应用详情 → 其他权限 → 开启「后台弹出界面」',
+            onTap: _openMiuiPermissionEditor,
+          ),
+          const SizedBox(height: kSpace2),
+          _PermissionButton(
+            icon: Icons.lock_outline_rounded,
+            label: '锁屏显示',
+            desc: '应用详情 → 其他权限 → 开启「锁屏显示」',
+            onTap: _openMiuiPermissionEditor,
+          ),
+          const SizedBox(height: kSpace2),
           _RowTile(
-            label: '锁屏闹钟提醒',
-            subtitle: '需要开启权限才能在锁屏时显示全屏闹钟',
+            label: '锁屏全屏显示',
+            subtitle: 'Android 14+ 全屏通知权限，开启后闹钟可在锁屏弹出全屏界面',
             trailing: const Icon(Icons.open_in_new_rounded, color: kBrandCopper, size: 18),
             onTap: _openFullScreenIntentSettings,
           ),
+          const SizedBox(height: kSpace3),
         ],
       ),
     );
@@ -446,6 +461,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       channel.invokeMethod('openFullScreenIntentSettings');
     } catch (e) {
       debugPrint('Failed to open full screen intent settings: $e');
+    }
+  }
+
+  void _openMiuiPermissionEditor() {
+    try {
+      const channel = MethodChannel('com.example.alarm_clock/settings');
+      channel.invokeMethod('openMiuiPermissionEditor');
+    } catch (e) {
+      debugPrint('Failed to open MIUI permission editor: $e');
     }
   }
 

@@ -1,6 +1,20 @@
 import '../models/alarm_info.dart';
 import '../models/week_schedule.dart';
 
+/// Returns the effective trigger DateTime for an [alarm] on a given [date].
+/// For singleRest alarms on a single-rest Saturday, uses [alarm.saturdayHour]
+/// and [alarm.saturdayMinute]; otherwise uses the alarm's base time.
+DateTime alarmTimeForDate(AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides) {
+  if (alarm.repeatType == RepeatType.singleRest &&
+      date.weekday == DateTime.saturday) {
+    final wt = resolveWeekType(date, overrides);
+    if (wt == WeekType.single) {
+      return DateTime(date.year, date.month, date.day, alarm.saturdayHour, alarm.saturdayMinute);
+    }
+  }
+  return DateTime(date.year, date.month, date.day, alarm.hour, alarm.minute);
+}
+
 /// Calculate ISO week number since Jan 1, 2024 as epoch.
 /// Uses simple week counting from epoch, not ISO week-of-year.
 int weekNumber(DateTime date) {

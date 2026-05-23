@@ -5,7 +5,7 @@ import 'schedule_storage_service.dart';
 
 class AlarmStorageService {
   static const String _dbName = 'alarm_clock.db';
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 5;
   static const String _tableName = 'alarms';
 
   static late Database _db;
@@ -57,6 +57,18 @@ class AlarmStorageService {
         if (oldVersion < 4) {
           // Create holiday cache table
           await HolidayService.createTable(db);
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            "ALTER TABLE $_tableName ADD COLUMN saturdayHour INTEGER",
+          );
+          await db.execute(
+            "ALTER TABLE $_tableName ADD COLUMN saturdayMinute INTEGER",
+          );
+          // Backfill existing rows: saturday = same as regular time
+          await db.execute(
+            "UPDATE $_tableName SET saturdayHour = hour, saturdayMinute = minute WHERE saturdayHour IS NULL",
+          );
         }
       },
     );

@@ -105,10 +105,13 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
                           ]
                         : [],
                   ),
-                  child: const Icon(
-                    Icons.alarm_on_rounded,
-                    color: kBrandCopper,
-                    size: 50,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/icon.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
