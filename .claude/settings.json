@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gitnexus": {
+      "command": "D:\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\JOJO\\AppData\\Roaming\\npm\\node_modules\\gitnexus\\dist\\cli\\index.js",
+        "mcp"
+      ]
+    }
+  }
+}

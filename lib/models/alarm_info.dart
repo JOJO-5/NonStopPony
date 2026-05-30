@@ -8,6 +8,12 @@ enum RepeatType {
   custom,
 }
 
+enum AlarmTaskType {
+  none,
+  math,
+  sequence,
+}
+
 /// Represents a selectable ringtone with a display title, system URI, and type.
 class RingtoneInfo {
   final String title;
@@ -49,6 +55,8 @@ class AlarmInfo {
   final int saturdayHour;
   final int saturdayMinute;
 
+  final AlarmTaskType taskType;
+
   AlarmInfo.create({
     this.id,
     required this.hour,
@@ -63,6 +71,7 @@ class AlarmInfo {
     this.ringtoneTitle = '默认',
     int? saturdayHour,
     int? saturdayMinute,
+    this.taskType = AlarmTaskType.none,
   })  : weekdays = weekdays ?? [],
         saturdayHour = saturdayHour ?? hour,
         saturdayMinute = saturdayMinute ?? minute;
@@ -81,6 +90,7 @@ class AlarmInfo {
     this.ringtoneTitle = '默认',
     int? saturdayHour,
     int? saturdayMinute,
+    this.taskType = AlarmTaskType.none,
   })  : saturdayHour = saturdayHour ?? hour,
         saturdayMinute = saturdayMinute ?? minute;
 
@@ -99,6 +109,7 @@ class AlarmInfo {
       'ringtoneTitle': ringtoneTitle,
       'saturdayHour': saturdayHour,
       'saturdayMinute': saturdayMinute,
+      'taskType': taskType.index,
     };
   }
 
@@ -122,6 +133,9 @@ class AlarmInfo {
       ringtoneTitle: map['ringtoneTitle'] as String? ?? '默认',
       saturdayHour: map['saturdayHour'] as int? ?? (map['hour'] as int),
       saturdayMinute: map['saturdayMinute'] as int? ?? (map['minute'] as int),
+      taskType: map['taskType'] != null
+          ? AlarmTaskType.values[map['taskType'] as int]
+          : AlarmTaskType.none,
     );
   }
 
@@ -139,6 +153,7 @@ class AlarmInfo {
     String? ringtoneTitle,
     int? saturdayHour,
     int? saturdayMinute,
+    AlarmTaskType? taskType,
   }) {
     return AlarmInfo(
       id: id ?? this.id,
@@ -154,6 +169,7 @@ class AlarmInfo {
       ringtoneTitle: ringtoneTitle ?? this.ringtoneTitle,
       saturdayHour: saturdayHour ?? this.saturdayHour,
       saturdayMinute: saturdayMinute ?? this.saturdayMinute,
+      taskType: taskType ?? this.taskType,
     );
   }
 }
