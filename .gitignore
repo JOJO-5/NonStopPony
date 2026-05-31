@@ -43,3 +43,24 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Android build artifacts
+/android/build/
+/android/.gradle/
+/android/gradle/
+# iOS
+/ios/Pods/
+/ios/.symlinks/
+/ios/Podfile.lock
+# OMC session state
+.omc/
+# Temp/test files
+test_out.txt
+test_write.txt
+*.tmp
+# Generated assets (regenerate with flutter_launcher_icons)
+# assets/icon_launcher.png
+# assets/icon_foreground.png
+# FVM
+.fvm/
+# Coverage
+/coverage/

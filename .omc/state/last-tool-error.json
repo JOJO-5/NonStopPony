@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ls -d /c/Users/JOJO/AppData/Local/Pub/Cache/hosted/pub.dev/move_to_background*/ 2>/dev/null\",\"description\":\"Find move_to_background in pub cache by directory listing\"}",
-  "error": "Exit code 2",
-  "timestamp": "2026-05-30T10:07:35.653Z",
-  "retry_count": 1
-}
