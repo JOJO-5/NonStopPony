@@ -132,17 +132,15 @@ bool shouldRingOnDate(
 
 /// Find next DateTime where shouldRingOnDate returns true.
 /// Search starts from `from` (default: now). Limits search to 365 days.
+/// Synchronous version — does NOT check holidays (use [nextAlarmDateAsync] for that).
 DateTime? nextAlarmDate(
   AlarmInfo alarm,
   List<WeekSchedule> overrides, {
   DateTime? from,
-  Future<bool> Function(DateTime)? isHolidayFn,
-  Future<bool> Function(DateTime)? isWorkdayFn,
 }) {
   final start = from ?? DateTime.now();
   for (int i = 0; i < 365; i++) {
     final candidate = DateTime(start.year, start.month, start.day + i);
-    // For synchronous version without holiday check
     if (shouldRingOnDate(alarm, candidate, overrides)) {
       return candidate;
     }

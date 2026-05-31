@@ -24,6 +24,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   late TextEditingController _labelController;
   late String _ringtone;       // URI
   late String _ringtoneTitle;  // Display name
+  late AlarmTaskType _taskType;
   bool _saving = false;
 
   /// Fixed extent controllers for the hour and minute pickers.
@@ -47,6 +48,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     _labelController = TextEditingController(text: a?.label ?? '');
     _ringtone = a?.ringtone ?? 'default';
     _ringtoneTitle = a?.ringtoneTitle ?? '默认';
+    _taskType = a?.taskType ?? AlarmTaskType.none;
 
     // Initialise scroll controllers so the wheels start at the correct value.
     _hourController = FixedExtentScrollController(initialItem: _hour);
@@ -80,6 +82,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
         ringtoneTitle: _ringtoneTitle,
         saturdayHour: _saturdayHour,
         saturdayMinute: _saturdayMinute,
+        taskType: _taskType,
       );
       final provider = context.read<AlarmProvider>();
       if (_isEditing) {
@@ -360,6 +363,42 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
             ),
 
             const SizedBox(height: kSpace6),
+            // ── Closing task ─────────────────────────────────
+            _SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionLabel(label: '关闭任务'),
+                  const SizedBox(height: kSpace2),
+                  Text(
+                    '响铃时需要完成任务才能关闭闹钟',
+                    style: TextStyle(fontSize: 12, color: kBrandTextSecondary),
+                  ),
+                  const SizedBox(height: kSpace3),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TaskTypeChip(
+                          label: '无',
+                          icon: Icons.alarm_off_rounded,
+                          selected: _taskType == AlarmTaskType.none,
+                          onTap: () => setState(() => _taskType = AlarmTaskType.none),
+                        ),
+                      ),
+                      const SizedBox(width: kSpace2),
+                      Expanded(
+                        child: _TaskTypeChip(
+                          label: '算术题',
+                          icon: Icons.calculate_rounded,
+                          selected: _taskType == AlarmTaskType.math,
+                          onTap: () => setState(() => _taskType = AlarmTaskType.math),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
             // ── Save button ─────────────────────────────────
             SizedBox(
@@ -552,5 +591,50 @@ class _WeekTypeDropdown extends StatelessWidget {
       default:
         return type;
     }
+  }
+}
+// ── Task type chip ─────────────────────────────────────────────
+class _TaskTypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _TaskTypeChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: kSpace3, horizontal: kSpace3),
+        decoration: BoxDecoration(
+          color: selected ? kBrandCopper.withValues(alpha: 0.12) : kBrandSurfaceAlt,
+          borderRadius: BorderRadius.circular(kRadiusSm),
+          border: Border.all(
+            color: selected ? kBrandCopper : kBrandOutlineVariant,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: selected ? kBrandCopper : kBrandTextSecondary),
+            const SizedBox(width: kSpace1),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? kBrandCopper : kBrandTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

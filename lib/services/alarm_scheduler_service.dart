@@ -16,15 +16,17 @@ class AlarmSchedulerService {
   /// Calculates the next trigger [DateTime] for the given [alarm].
   ///
   /// Returns `null` if no valid trigger date is found within 365 days.
+  /// Optional [from] sets the search start point (defaults to now).
   ///
   /// Now integrates with [HolidayService] to check statutory holidays
   /// (rest days → don't ring) and make-up workdays (补班 → ring).
   static Future<DateTime?> calculateNextTrigger(
     AlarmInfo alarm, {
     List<WeekSchedule>? overrides,
+    DateTime? from,
   }) async {
     final effectiveOverrides = overrides ?? [];
-    final now = DateTime.now();
+    final now = from ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final alarmTimeToday = alarmTimeForDate(alarm, today, effectiveOverrides);
 
@@ -32,10 +34,11 @@ class AlarmSchedulerService {
     DateTime start;
     switch (alarm.repeatType) {
       case RepeatType.once:
+        // One-time alarm: only trigger if time hasn't passed yet
         if (now.isBefore(alarmTimeToday)) {
           return alarmTimeToday;
         }
-        return alarmTimeToday.add(const Duration(days: 1));
+        return null; // Already expired — no next trigger
       case RepeatType.daily:
         start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
         break;
@@ -84,29 +87,26 @@ class AlarmSchedulerService {
     final triggers = <DateTime>[];
     final first = await calculateNextTrigger(alarm, overrides: overrides);
     if (first == null) return triggers;
-
     final now = DateTime.now();
     final endDate = now.add(Duration(days: 7));
-
     var current = first;
     while (current.isBefore(endDate)) {
       triggers.add(current);
-      // Calculate the next occurrence after current
+      // Search for the next occurrence starting from the day after current
+      final nextDay = DateTime(current.year, current.month, current.day)
+          .add(const Duration(days: 1));
       final next = await calculateNextTrigger(
-        alarm.copyWith(
-          hour: current.hour,
-          minute: current.minute,
-        ),
+        alarm,
         overrides: overrides,
+        from: nextDay,
       );
-      if (next == null || next.isBefore(current.add(Duration(days: 1)))) {
+      if (next == null || !next.isAfter(current)) {
         break;
       }
-      current = next.add(Duration(days: 1));
+      current = next;
       // Guard against infinite loop
       if (triggers.length > 7) break;
     }
-
     return triggers;
   }
 

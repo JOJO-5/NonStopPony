@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/analog_clock_widget.dart';
+import '../widgets/tasks/math_challenge.dart';
 import '../services/alarm_notification_service.dart';
+import '../services/alarm_storage_service.dart';
+import '../models/alarm_info.dart';
 import '../app.dart';
 
 /// Full-screen alarm overlay for lock-screen / screen-off state.
@@ -39,7 +42,8 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
   late Animation<double> _shakeAnim;
   late Timer _timer;
   DateTime _now = DateTime.now();
-
+  AlarmTaskType _taskType = AlarmTaskType.none;
+  bool _taskCompleted = false;
   static const _bg = Color(0xFF120A06);
   static const _swipeThreshold = 120.0;
 
@@ -73,6 +77,18 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
+    // Load alarm from DB to get taskType (needed for MathChallenge)
+    _loadAlarmTaskType();
+  }
+  Future<void> _loadAlarmTaskType() async {
+    try {
+      final alarm = await AlarmStorageService.getById(widget.alarmId);
+      if (alarm != null && mounted) {
+        setState(() => _taskType = alarm.taskType);
+      }
+    } catch (e) {
+      debugPrint('Failed to load alarm taskType: $e');
+    }
   }
 
   @override
@@ -110,6 +126,8 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
         body: SafeArea(
           child: GestureDetector(
             onVerticalDragUpdate: (details) {
+              // Disable swipe-to-dismiss during math challenge
+              if (_taskType == AlarmTaskType.math && !_taskCompleted) return;
               if (details.delta.dy < 0) {
                 // Swiping up
                 final progress = (_swipeCtrl.value + (-details.delta.dy / _swipeThreshold)).clamp(0.0, 1.0);
@@ -117,6 +135,7 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
               }
             },
             onVerticalDragEnd: (details) {
+              if (_taskType == AlarmTaskType.math && !_taskCompleted) return;
               if (_swipeCtrl.value > 0.6) {
                 // Threshold reached — dismiss
                 _dismiss();
@@ -227,80 +246,91 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                         ),
                       ),
 
-                      // Bottom: time + swipe hint + buttons
+                      // Bottom: time + task or buttons
                       Padding(
                         padding: const EdgeInsets.only(bottom: kSpace12),
                         child: Column(
                           children: [
                             Text(timeStr, style: const TextStyle(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 3)),
                             const SizedBox(height: kSpace6),
-                            const Text('\u95f9\u949f\u54cd\u4e86', style: TextStyle(color: Colors.white24, fontSize: 13, letterSpacing: 1)),
-                            const SizedBox(height: kSpace10),
-                            // Swipe-up hint with animated arrow
-                            AnimatedBuilder(
-                              animation: _swipeCtrl,
-                              builder: (_, __) => Opacity(
-                                opacity: 1.0 - _swipeCtrl.value * 0.5,
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.keyboard_arrow_up,
-                                        color: kBrandCopper.withValues(alpha: 0.6 + _swipeCtrl.value * 0.4),
-                                        size: 28),
-                                    Text('\u4e0a\u5212\u5173\u95ed',
-                                        style: TextStyle(
-                                          color: Colors.white24,
-                                          fontSize: 12,
-                                          letterSpacing: 1,
-                                        )),
-                                  ],
+                            // ── Math challenge mode ────────────────────
+                            if (_taskType == AlarmTaskType.math && !_taskCompleted) ...[
+                              const SizedBox(height: kSpace4),
+                              MathChallenge(
+                                onSolved: () {
+                                  setState(() => _taskCompleted = true);
+                                  _dismiss();
+                                },
+                              ),
+                            ] else ...[
+                              const Text('闹钟响了', style: TextStyle(color: Colors.white24, fontSize: 13, letterSpacing: 1)),
+                              const SizedBox(height: kSpace10),
+                              // Swipe-up hint with animated arrow
+                              AnimatedBuilder(
+                                animation: _swipeCtrl,
+                                builder: (_, __) => Opacity(
+                                  opacity: 1.0 - _swipeCtrl.value * 0.5,
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.keyboard_arrow_up,
+                                          color: kBrandCopper.withValues(alpha: 0.6 + _swipeCtrl.value * 0.4),
+                                          size: 28),
+                                      const Text('上划关闭',
+                                          style: TextStyle(
+                                            color: Colors.white24,
+                                            fontSize: 12,
+                                            letterSpacing: 1,
+                                          )),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: kSpace8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Snooze button
-                                GestureDetector(
-                                  onTap: _snooze,
-                                  child: Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: kBrandCopper, width: 2),
+                              const SizedBox(height: kSpace8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Snooze button
+                                  GestureDetector(
+                                    onTap: _snooze,
+                                    child: Container(
+                                      width: 64,
+                                      height: 64,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: kBrandCopper, width: 2),
+                                      ),
+                                      child: const Icon(Icons.snooze_rounded, color: kBrandCopper, size: 28),
                                     ),
-                                    child: const Icon(Icons.snooze_rounded, color: kBrandCopper, size: 28),
                                   ),
-                                ),
-                                const SizedBox(width: kSpace10),
-                                // Dismiss button
-                                GestureDetector(
-                                  onTap: _dismiss,
-                                  child: Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: kBrandCopper,
-                                      boxShadow: [
-                                        BoxShadow(color: kBrandCopper.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 6),
-                                      ],
+                                  const SizedBox(width: kSpace10),
+                                  // Dismiss button
+                                  GestureDetector(
+                                    onTap: _dismiss,
+                                    child: Container(
+                                      width: 64,
+                                      height: 64,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: kBrandCopper,
+                                        boxShadow: [
+                                          BoxShadow(color: kBrandCopper.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 6),
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
                                     ),
-                                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: kSpace5),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('\u7a0d\u540e\u63d0\u9192', style: const TextStyle(color: Colors.white24, fontSize: 12)),
-                                const SizedBox(width: kSpace10),
-                                Text('\u5173\u95ed', style: const TextStyle(color: Colors.white24, fontSize: 12)),
-                              ],
-                            ),
+                                ],
+                              ),
+                              const SizedBox(height: kSpace5),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('稍后提醒', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                                  const SizedBox(width: kSpace10),
+                                  const Text('关闭', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

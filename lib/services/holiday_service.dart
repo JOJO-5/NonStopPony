@@ -55,12 +55,7 @@ class HolidayService {
     _db = db;
   }
 
-  static Database _database() {
-    if (_db == null) {
-      throw StateError('HolidayService.setDatabase() must be called first');
-    }
-    return _db!;
-  }
+  static Database? _database() => _db;
 
   /// Creates the holiday_cache table. Call during DB migration.
   static Future<void> createTable(Database db) async {
@@ -101,8 +96,8 @@ class HolidayService {
 
       final holiday = json['holiday'] as Map<String, dynamic>;
       final db = _database();
+      if (db == null) return 0;
       int count = 0;
-
       // Use a batch for efficient insertion
       final batch = db.batch();
       for (final entry in holiday.entries) {
@@ -149,8 +144,10 @@ class HolidayService {
   /// Gets holiday info for a specific date.
   /// Returns null if no cached data exists for this date.
   static Future<HolidayInfo?> getHolidayInfo(DateTime date) async {
+    final db = _database();
+    if (db == null) return null;
     final isoDate = date.toIso8601String().substring(0, 10);
-    final rows = await _database().query(
+    final rows = await db.query(
       _tableName,
       where: 'date = ?',
       whereArgs: [isoDate],
@@ -159,13 +156,11 @@ class HolidayService {
     if (rows.isEmpty) return null;
     return HolidayInfo.fromMap(rows.first);
   }
-
   /// Checks if a date is a statutory holiday (rest day).
   static Future<bool> isHoliday(DateTime date) async {
     final info = await getHolidayInfo(date);
     return info?.isHoliday ?? false;
   }
-
   /// Checks if a date is a make-up workday (补班日).
   static Future<bool> isWorkday(DateTime date) async {
     final info = await getHolidayInfo(date);
@@ -176,7 +171,9 @@ class HolidayService {
   static Future<bool> isYearCached(int year) async {
     final startIso = DateTime(year, 1, 1).toIso8601String().substring(0, 10);
     final endIso = DateTime(year, 12, 31).toIso8601String().substring(0, 10);
-    final rows = await _database().rawQuery(
+    final db = _database();
+    if (db == null) return false;
+    final rows = await db.rawQuery(
       'SELECT COUNT(*) as cnt FROM $_tableName WHERE date >= ? AND date <= ?',
       [startIso, endIso],
     );
@@ -203,8 +200,9 @@ class HolidayService {
         ? DateTime(year + 1, 1, 1).subtract(const Duration(days: 1))
         : DateTime(year, month + 1, 1).subtract(const Duration(days: 1));
     final endIso = lastDay.toIso8601String().substring(0, 10);
-
-    final rows = await _database().query(
+    final db = _database();
+    if (db == null) return [];
+    final rows = await db.query(
       _tableName,
       where: 'date >= ? AND date <= ?',
       whereArgs: [startIso, endIso],
@@ -218,7 +216,9 @@ class HolidayService {
     final startIso = DateTime(year, 1, 1).toIso8601String().substring(0, 10);
     final endIso = DateTime(year, 12, 31).toIso8601String().substring(0, 10);
 
-    final rows = await _database().query(
+    final db = _database();
+    if (db == null) return [];
+    final rows = await db.query(
       _tableName,
       where: 'date >= ? AND date <= ?',
       whereArgs: [startIso, endIso],

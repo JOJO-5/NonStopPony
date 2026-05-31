@@ -9,19 +9,18 @@ class TimerProvider extends ChangeNotifier {
   TimerProvider() {
     _initFromPrefs();
   }
-
   static const _keyEndTime = 'timer_end_time';
   static const _keyTotalSeconds = 'timer_total_seconds';
-
   int _totalSeconds = 0;
   int _remainingSeconds = 0;
   TimerState _state = TimerState.idle;
   Timer? _timer;
   DateTime? _endTime;
-
+  bool _loaded = false;
   int get totalSeconds => _totalSeconds;
   int get remainingSeconds => _remainingSeconds;
   TimerState get state => _state;
+  bool get loaded => _loaded;
 
   String get formattedTime {
     final hours = (_remainingSeconds ~/ 3600);
@@ -189,12 +188,18 @@ class TimerProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final endTimeMs = prefs.getInt(_keyEndTime);
       final totalSecs = prefs.getInt(_keyTotalSeconds);
-      if (endTimeMs == null || totalSecs == null) return;
+      if (endTimeMs == null || totalSecs == null) {
+        _loaded = true;
+        notifyListeners();
+        return;
+      }
       final endTime = DateTime.fromMillisecondsSinceEpoch(endTimeMs);
       final now = DateTime.now();
       if (endTime.isBefore(now)) {
         // Timer already expired while app was dead — clear stale state
         await _clearPersistedTimer();
+        _loaded = true;
+        notifyListeners();
         return;
       }
       // Recover the timer: it was running when the app was killed
@@ -213,10 +218,13 @@ class TimerProvider extends ChangeNotifier {
         // Ensure native AlarmManager fallback is scheduled
         TimerBackgroundService.scheduleTimerAlarm(endTimeMs);
       }
+      _loaded = true;
       notifyListeners();
     } catch (e) {
       debugPrint('TimerProvider._initFromPrefs error: $e');
       await _clearPersistedTimer();
+      _loaded = true;
+      notifyListeners();
     }
   }
 

@@ -47,15 +47,13 @@ void main() {
         final now = DateTime.now();
         final alarmTimeNow = DateTime(now.year, now.month, now.day, now.hour, now.minute);
         final isTimePassed = now.isAfter(alarmTimeNow);
-
         final alarm = AlarmInfo.create(hour: now.hour, minute: now.minute, repeatType: RepeatType.daily);
-
         final result = await AlarmSchedulerService.calculateNextTrigger(alarm);
-
         expect(result, isNotNull);
         if (isTimePassed) {
-          // Time passed, should be tomorrow
-          expect(result!.day, now.day + 1);
+          // Time passed, should be tomorrow (compare full date to handle month rollover)
+          final tomorrow = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+          expect(DateTime(result!.year, result.month, result.day), tomorrow);
         } else {
           // Time not passed, should be today
           expect(result!.day, now.day);

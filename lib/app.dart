@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-
-import 'providers/alarm_provider.dart';
-import 'providers/timer_provider.dart';
-import 'providers/stopwatch_provider.dart';
-import 'providers/schedule_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/alarm_fullscreen_screen.dart';
 import 'screens/timer_fullscreen_screen.dart';
@@ -185,15 +179,7 @@ class AlarmClockApp extends StatelessWidget {
         },
         '/timer_ringing': (ctx) => const TimerFullScreenScreen(),
       },
-      home: MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: context.read<AlarmProvider>()),
-          ChangeNotifierProvider.value(value: context.read<TimerProvider>()),
-          ChangeNotifierProvider.value(value: context.read<StopwatchProvider>()),
-          ChangeNotifierProvider.value(value: context.read<ScheduleProvider>()),
-        ],
-        child: const HomeScreen(),
-      ),
+      home: const HomeScreen(),
     );
   }
 }

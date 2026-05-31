@@ -32,6 +32,9 @@ class AlarmStorageService {
             isEnabled INTEGER NOT NULL,
             ringtone TEXT NOT NULL DEFAULT 'default',
             ringtoneTitle TEXT NOT NULL DEFAULT '默认',
+            saturdayHour INTEGER,
+            saturdayMinute INTEGER,
+            taskType INTEGER NOT NULL DEFAULT 0,
             createdAt INTEGER NOT NULL,
             updatedAt INTEGER NOT NULL
           )

@@ -36,6 +36,12 @@ class RingtoneInfo {
   Map<String, String> toMap() => {'title': title, 'uri': uri, 'type': type};
 }
 
+/// Bounds-safe enum deserialization from an integer index.
+/// Returns [fallback] if [index] is null or out of range.
+T _safeEnum<T>(List<T> values, int? index, T fallback) {
+  if (index == null || index < 0 || index >= values.length) return fallback;
+  return values[index];
+}
 class AlarmInfo {
   final int? id;
   final int hour;
@@ -123,7 +129,7 @@ class AlarmInfo {
       id: map['id'] as int?,
       hour: map['hour'] as int,
       minute: map['minute'] as int,
-      repeatType: RepeatType.values[map['repeatType'] as int],
+      repeatType: _safeEnum(RepeatType.values, map['repeatType'] as int?, RepeatType.once),
       weekdays: weekdays,
       label: map['label'] as String?,
       vibrate: (map['vibrate'] as int) == 1,
@@ -133,9 +139,7 @@ class AlarmInfo {
       ringtoneTitle: map['ringtoneTitle'] as String? ?? '默认',
       saturdayHour: map['saturdayHour'] as int? ?? (map['hour'] as int),
       saturdayMinute: map['saturdayMinute'] as int? ?? (map['minute'] as int),
-      taskType: map['taskType'] != null
-          ? AlarmTaskType.values[map['taskType'] as int]
-          : AlarmTaskType.none,
+      taskType: _safeEnum(AlarmTaskType.values, map['taskType'] as int?, AlarmTaskType.none),
     );
   }
 

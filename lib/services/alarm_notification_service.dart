@@ -277,16 +277,15 @@ class AlarmNotificationService {
   /// Snoozes an alarm for 5 minutes.
   ///
   /// Cancels the current notification and schedules a new one 5 minutes from now.
-  Future<void> snoozeAlarm(int alarmId, String? title, String? body) async {
+  Future<void> snoozeAlarm(int alarmId, String? title, String? body, {String ringtone = 'default'}) async {
     // Cancel current notification
     try {
       await _plugin.cancel(id: alarmId);
     } catch (e) {
       debugPrint('snoozeAlarm cancel failed (expected in test env): $e');
     }
-
-    // Schedule new notification 5 minutes from now
-    final sound = _ringtoneToSound('默认');
+    // Schedule new notification 5 minutes from now, preserving the alarm's ringtone
+    final sound = _ringtoneToSound(ringtone);
     final androidDetails = AndroidNotificationDetails(
       'alarm_channel_v3',
       '战马闹钟',
@@ -316,7 +315,6 @@ class AlarmNotificationService {
       android: androidDetails,
       iOS: iosDetails,
     );
-
     final scheduledDate = DateTime.now().add(const Duration(minutes: 5));
     await _plugin.zonedSchedule(
       id: alarmId,
