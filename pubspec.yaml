@@ -68,12 +68,14 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter_launcher_icons:
-  image_path: "assets/icon.png"
+  image_path: "assets/icon_launcher.png"
+  image_path_ios: "assets/icon_launcher.png"
   android: true
   ios: true
-  adaptive_icon_background: "#F7F7F5"
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_background: "#F9F5F0"
+  adaptive_icon_foreground: "assets/icon_foreground.png"
   remove_alpha_ios: true
+  min_sdk_android: 21
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -95,6 +97,8 @@ flutter:
 
   assets:
     - assets/icon.png
+    - assets/icon_launcher.png
+    - assets/icon_foreground.png
     - assets/timezones.db
   # assets:
   #   - images/a_dot_burr.jpeg
