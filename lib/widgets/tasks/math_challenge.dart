@@ -75,7 +75,7 @@ class _MathChallengeState extends State<MathChallenge> {
               style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w300)),
           const SizedBox(height: 16),
           SizedBox(
-            width: 120,
+            width: 160,
             child: TextField(
               controller: _controller,
               autofocus: true,
@@ -84,10 +84,23 @@ class _MathChallengeState extends State<MathChallenge> {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
-                enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: kBrandCopper.withValues(alpha: 0.4))),
-                focusedBorder:
-                    const UnderlineInputBorder(borderSide: BorderSide(color: kBrandCopper)),
+                hintText: '?',
+                hintStyle: TextStyle(color: Colors.white24, fontSize: 36),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.08),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: kBrandCopper.withValues(alpha: 0.4)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: kBrandCopper.withValues(alpha: 0.4)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: kBrandCopper, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),

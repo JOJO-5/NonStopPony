@@ -47,7 +47,6 @@ dependencies:
   sqflite_common_ffi: ^2.3.7+1
   sqlite3_flutter_libs: ^0.5.42
   android_intent_plus: ^6.0.0
-  flutter_system_ringtones: ^0.0.6
   path_provider: ^2.1.5
   path: ^1.9.1
   dynamic_color: ^1.8.0
@@ -58,7 +57,7 @@ dependencies:
   timer_builder: ^2.0.0
   just_audio: ^0.9.37
   audio_session: ^0.1.18
-  vibration: ^1.9.0
+  vibration: ^3.1.0
 
 dev_dependencies:
   flutter_test:

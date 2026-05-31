@@ -201,48 +201,52 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                         ),
                       ),
 
-                      // Center: pulsing clock
-                      AnimatedBuilder(
-                        animation: Listenable.merge([_pulseAnim, _rippleAnim]),
-                        builder: (_, __) => Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Ripple ring
-                            Opacity(
-                              opacity: (1.5 - _rippleAnim.value).clamp(0.0, 0.4),
-                              child: Container(
-                                width: 240 * _rippleAnim.value,
-                                height: 240 * _rippleAnim.value,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: kBrandCopper, width: 1.5),
-                                ),
-                              ),
-                            ),
-                            // Pulsing clock face
-                            ScaleTransition(
-                              scale: _pulseAnim,
-                              child: Container(
-                                width: 200,
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF1E1008),
-                                  boxShadow: [
-                                    BoxShadow(color: kBrandCopper.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 10),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: AnalogClockWidget(
-                                    size: 168,
-                                    faceColor: const Color(0xFF1E1008),
-                                    handColor: Colors.white,
-                                    accentColor: kBrandCopper,
+                      // Center: pulsing clock (Expanded to shrink when keyboard appears)
+                      Expanded(
+                        child: Center(
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge([_pulseAnim, _rippleAnim]),
+                            builder: (_, __) => Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Ripple ring
+                                Opacity(
+                                  opacity: (1.5 - _rippleAnim.value).clamp(0.0, 0.4),
+                                  child: Container(
+                                    width: 240 * _rippleAnim.value,
+                                    height: 240 * _rippleAnim.value,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: kBrandCopper, width: 1.5),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                // Pulsing clock face
+                                ScaleTransition(
+                                  scale: _pulseAnim,
+                                  child: Container(
+                                    width: 200,
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: const Color(0xFF1E1008),
+                                      boxShadow: [
+                                        BoxShadow(color: kBrandCopper.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 10),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: AnalogClockWidget(
+                                        size: 168,
+                                        faceColor: const Color(0xFF1E1008),
+                                        handColor: Colors.white,
+                                        accentColor: kBrandCopper,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
 
