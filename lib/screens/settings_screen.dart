@@ -249,11 +249,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 PageRouteBuilder(
                   opaque: true,
-                  pageBuilder: (_, __, ___) => RingtonePickerScreen(
+                  pageBuilder: (_, _, _) => RingtonePickerScreen(
                     currentRingtone: _ringtoneUri,
                     currentRingtoneTitle: _ringtoneTitle,
                   ),
-                  transitionsBuilder: (_, animation, __, child) =>
+                  transitionsBuilder: (_, animation, _, child) =>
                       FadeTransition(opacity: animation, child: child),
                   transitionDuration: const Duration(milliseconds: 250),
                 ),
@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _ringtoneUri = result.uri;
                   _ringtoneTitle = result.title;
                 });
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('默认铃声已设为「${result.title}」'),
@@ -499,8 +499,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             PageRouteBuilder(
               opaque: true,
-              pageBuilder: (_, __, ___) => const AboutScreen(),
-              transitionsBuilder: (_, animation, __, child) =>
+              pageBuilder: (_, _, _) => const AboutScreen(),
+              transitionsBuilder: (_, animation, _, child) =>
                   FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 250),
             ),
@@ -588,7 +588,7 @@ class _RowTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label, style: const TextStyle(fontSize: 14, color: kBrandTextPrimary)),
-                  if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+                  if (subtitle case final subtitle?) Text(subtitle, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
                 ],
               ),
             ),

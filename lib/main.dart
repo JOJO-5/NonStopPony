@@ -122,8 +122,8 @@ void _pushAlarmScreen(NavigatorState state, int alarmId, String label) {
   state.push(
     PageRouteBuilder(
       opaque: true,
-      pageBuilder: (_, __, ___) => AlarmFullScreenScreen(alarmId: alarmId, label: label),
-      transitionsBuilder: (_, animation, __, child) =>
+      pageBuilder: (_, _, _) => AlarmFullScreenScreen(alarmId: alarmId, label: label),
+      transitionsBuilder: (_, animation, _, child) =>
           FadeTransition(opacity: animation, child: child),
       transitionDuration: const Duration(milliseconds: 300),
     ),

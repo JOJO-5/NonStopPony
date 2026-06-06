@@ -14,8 +14,8 @@ class TimerFullScreenScreen extends StatefulWidget {
     return Navigator.of(context, rootNavigator: true).push<bool>(
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (_, __, ___) => const TimerFullScreenScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, _, _) => const TimerFullScreenScreen(),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 350),
       ),
@@ -107,7 +107,7 @@ class _TimerFullScreenScreenState extends State<TimerFullScreenScreen>
                 Positioned.fill(
                   child: AnimatedBuilder(
                     animation: _swipeCtrl,
-                    builder: (_, __) => IgnorePointer(
+                    builder: (_, _) => IgnorePointer(
                       child: Container(
                         color: _accent.withValues(alpha: _swipeCtrl.value * 0.3),
                       ),
@@ -146,7 +146,7 @@ class _TimerFullScreenScreenState extends State<TimerFullScreenScreen>
                     // Center: clock face with breathing glow
                     AnimatedBuilder(
                       animation: _glowCtrl,
-                      builder: (_, __) => Container(
+                      builder: (_, _) => Container(
                         width: 200,
                         height: 200,
                         decoration: BoxDecoration(
@@ -192,7 +192,7 @@ class _TimerFullScreenScreenState extends State<TimerFullScreenScreen>
                           // Swipe-up hint
                           AnimatedBuilder(
                             animation: _swipeCtrl,
-                            builder: (_, __) => Opacity(
+                            builder: (_, _) => Opacity(
                               opacity: 1.0 - _swipeCtrl.value * 0.5,
                               child: Column(
                                 children: [

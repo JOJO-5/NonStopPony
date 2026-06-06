@@ -55,7 +55,7 @@ class _AnalogClockWidgetState extends State<AnalogClockWidget>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) {
+      builder: (_, _) {
         return CustomPaint(
           size: Size(widget.size, widget.size),
           painter: _ClockPainter(

@@ -20,8 +20,8 @@ class AlarmFullScreenScreen extends StatefulWidget {
     return Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (_, __, ___) => AlarmFullScreenScreen(alarmId: alarmId, label: label),
-        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+        pageBuilder: (_, _, _) => AlarmFullScreenScreen(alarmId: alarmId, label: label),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 350),
       ),
     );
@@ -150,7 +150,7 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                 Center(
                   child: AnimatedBuilder(
                     animation: _rippleAnim,
-                    builder: (_, __) => Container(
+                    builder: (_, _) => Container(
                       width: 280 * _rippleAnim.value,
                       height: 280 * _rippleAnim.value,
                       decoration: BoxDecoration(
@@ -169,7 +169,7 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                 // ── Swipe-up overlay (fade in as user swipes) ──
                 AnimatedBuilder(
                   animation: _swipeCtrl,
-                  builder: (_, __) => IgnorePointer(
+                  builder: (_, _) => IgnorePointer(
                     child: Container(
                       color: kBrandCopper.withValues(alpha: _swipeCtrl.value * 0.3),
                     ),
@@ -206,7 +206,7 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                         child: Center(
                           child: AnimatedBuilder(
                             animation: Listenable.merge([_pulseAnim, _rippleAnim]),
-                            builder: (_, __) => Stack(
+                            builder: (_, _) => Stack(
                               alignment: Alignment.center,
                               children: [
                                 // Ripple ring
@@ -272,7 +272,7 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
                               // Swipe-up hint with animated arrow
                               AnimatedBuilder(
                                 animation: _swipeCtrl,
-                                builder: (_, __) => Opacity(
+                                builder: (_, _) => Opacity(
                                   opacity: 1.0 - _swipeCtrl.value * 0.5,
                                   child: Column(
                                     children: [

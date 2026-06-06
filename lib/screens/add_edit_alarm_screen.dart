@@ -102,11 +102,11 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
       context,
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (_, __, ___) => RingtonePickerScreen(
+        pageBuilder: (_, _, _) => RingtonePickerScreen(
           currentRingtone: _ringtone,
           currentRingtoneTitle: _ringtoneTitle,
         ),
-        transitionsBuilder: (_, animation, __, child) =>
+        transitionsBuilder: (_, animation, _ , child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 250),
       ),

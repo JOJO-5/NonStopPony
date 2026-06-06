@@ -160,11 +160,11 @@ class AlarmNotificationService {
         state.push(
           PageRouteBuilder(
             opaque: true,
-            pageBuilder: (_, __, ___) => AlarmFullScreenScreen(
+            pageBuilder: (_, _, _) => AlarmFullScreenScreen(
               alarmId: alarmId,
               label: '战马闹钟',
             ),
-            transitionsBuilder: (_, animation, __, child) =>
+            transitionsBuilder: (_, animation, _, child) =>
                 FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 300),
           ),
@@ -177,11 +177,11 @@ class AlarmNotificationService {
             retryState.push(
               PageRouteBuilder(
                 opaque: true,
-                pageBuilder: (_, __, ___) => AlarmFullScreenScreen(
+                pageBuilder: (_, _, _) => AlarmFullScreenScreen(
                   alarmId: alarmId,
                   label: '战马闹钟',
                 ),
-                transitionsBuilder: (_, animation, __, child) =>
+                transitionsBuilder: (_, animation, _, child) =>
                     FadeTransition(opacity: animation, child: child),
                 transitionDuration: const Duration(milliseconds: 300),
               ),
