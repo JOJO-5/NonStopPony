@@ -592,7 +592,7 @@ class _RowTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing case final trailing?) trailing,
+            trailing?,
           ],
         ),
       ),
