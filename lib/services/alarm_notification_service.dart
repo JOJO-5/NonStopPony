@@ -8,6 +8,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../screens/alarm_fullscreen_screen.dart';
+import '../models/alarm_info.dart';
+import '../services/alarm_storage_service.dart';
+import '../services/alarm_scheduler_service.dart';
+import '../services/schedule_storage_service.dart';
 
 /// Global navigator key so [AlarmNotificationService] can push routes without
 /// a BuildContext (notification tap from background / lock screen).
@@ -131,6 +135,8 @@ class AlarmNotificationService {
       final alarmId = int.tryParse(response.payload ?? '');
       if (alarmId != null && alarmId >= 0) {
         _plugin.cancel(id: alarmId);
+        // Reschedule next alarm for repeating alarms
+        _rescheduleAfterDismiss(alarmId);
       }
       // Bug #2 fix: also stop the ringing service when user taps STOP_ALARM
       stopAlarmRing();
@@ -146,6 +152,20 @@ class AlarmNotificationService {
     }
     // Tapping the notification body (not the action button) opens full-screen
     _routeToAlarmScreen(response.payload);
+  }
+
+  /// Reschedule alarm after dismiss for repeating alarms.
+  Future<void> _rescheduleAfterDismiss(int alarmId) async {
+    try {
+      final alarm = await AlarmStorageService.getById(alarmId);
+      if (alarm != null && alarm.repeatType != RepeatType.once) {
+        final overrides = await ScheduleStorageService.getAll();
+        await AlarmSchedulerService.scheduleAlarm(alarm, overrides: overrides);
+        debugPrint('Rescheduled repeating alarm $alarmId after STOP_ALARM');
+      }
+    } catch (e) {
+      debugPrint('Failed to reschedule alarm $alarmId: $e');
+    }
   }
 
   void _routeToAlarmScreen(String? payload) {
@@ -452,6 +472,8 @@ void _onBackgroundNotificationResponse(NotificationResponse response) {
     final alarmId = int.tryParse(response.payload ?? '');
     if (alarmId != null && alarmId >= 0) {
       FlutterLocalNotificationsPlugin().cancel(id: alarmId);
+      // Reschedule next alarm for repeating alarms
+      _rescheduleInBackground(alarmId);
     }
     // Bug #2 fix: stop the ringing service in background handler too
     AlarmNotificationService.stopAlarmRing();
@@ -464,5 +486,19 @@ void _onBackgroundNotificationResponse(NotificationResponse response) {
   } else {
     // Bug #2 fix: when notification fires in background, start ringing
     AlarmNotificationService.startAlarmRing();
+  }
+}
+
+/// Reschedule alarm in background for repeating alarms.
+Future<void> _rescheduleInBackground(int alarmId) async {
+  try {
+    final alarm = await AlarmStorageService.getById(alarmId);
+    if (alarm != null && alarm.repeatType != RepeatType.once) {
+      final overrides = await ScheduleStorageService.getAll();
+      await AlarmSchedulerService.scheduleAlarm(alarm, overrides: overrides);
+      debugPrint('Rescheduled repeating alarm $alarmId in background');
+    }
+  } catch (e) {
+    debugPrint('Failed to reschedule alarm $alarmId in background: $e');
   }
 }

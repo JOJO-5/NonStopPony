@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import '../widgets/analog_clock_widget.dart';
 import '../widgets/tasks/math_challenge.dart';
 import '../services/alarm_notification_service.dart';
+import '../services/alarm_scheduler_service.dart';
 import '../services/alarm_storage_service.dart';
+import '../services/schedule_storage_service.dart';
 import '../models/alarm_info.dart';
 import '../app.dart';
 
@@ -105,6 +107,19 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
   Future<void> _dismiss() async {
     await AlarmNotificationService.stopAlarmRing();
     await AlarmNotificationService().cancelAlarmNotification(widget.alarmId);
+    
+    // Reschedule next alarm for repeating alarms (daily, weekdays, singleRest, etc.)
+    try {
+      final alarm = await AlarmStorageService.getById(widget.alarmId);
+      if (alarm != null && alarm.repeatType != RepeatType.once) {
+        final overrides = await ScheduleStorageService.getAll();
+        await AlarmSchedulerService.scheduleAlarm(alarm, overrides: overrides);
+        debugPrint('Rescheduled repeating alarm ${alarm.id} for next trigger');
+      }
+    } catch (e) {
+      debugPrint('Failed to reschedule alarm after dismiss: $e');
+    }
+    
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
   }
 
