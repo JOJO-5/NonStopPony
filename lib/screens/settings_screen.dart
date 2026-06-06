@@ -617,7 +617,7 @@ class _SwitchTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontSize: 14, color: kBrandTextPrimary)),
-              if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+              if (subtitle case final subtitle?) Text(subtitle, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
             ],
           ),
         ),
