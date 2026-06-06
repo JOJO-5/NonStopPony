@@ -14,7 +14,7 @@
 
 ## 技术栈
 
-Flutter 3.35 · Dart 3.9 · Provider · sqflite · flutter_local_notifications
+Flutter stable · Dart 3.9+ · Provider · sqflite · flutter_local_notifications
 
 ## 构建
 
