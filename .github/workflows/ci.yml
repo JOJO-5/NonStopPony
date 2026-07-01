@@ -64,12 +64,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_PASSWORD" ]; then
-            cat > android/key.properties <<EOF
-            storeFile=release.keystore
-            storePassword=$KEYSTORE_PASSWORD
-            keyAlias=$KEY_ALIAS
-            keyPassword=$KEY_PASSWORD
-            EOF
+            echo "storeFile=release.keystore" > android/key.properties
+            echo "storePassword=$KEYSTORE_PASSWORD" >> android/key.properties
+            echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+            echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
           else
             echo "::warning::KEYSTORE_PASSWORD not set, APK will use debug signing"
           fi
@@ -147,12 +145,10 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cat > android/key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
+          echo "storeFile=release.keystore" > android/key.properties
+          echo "storePassword=$KEYSTORE_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
 
       - name: Flutter pub get
         run: flutter pub get
