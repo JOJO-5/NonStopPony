@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -38,7 +40,7 @@ android {
             // signing config so the build still succeeds.
             val keystorePropertiesFile = rootProject.file("key.properties")
             if (keystorePropertiesFile.exists()) {
-                val keystoreProperties = java.util.Properties().apply {
+                val keystoreProperties = Properties().apply {
                     load(keystorePropertiesFile.inputStream())
                 }
                 storeFile = file(keystoreProperties["storeFile"] as String)
