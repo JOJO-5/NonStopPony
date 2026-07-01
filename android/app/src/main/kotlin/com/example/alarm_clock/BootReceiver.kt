@@ -297,7 +297,7 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun autoWeekType(dateMs: Long): Int {
-        return if (weekNumber(dateMs).isOdd) WEEK_SINGLE else WEEK_DOUBLE
+        return if (weekNumber(dateMs) % 2 != 0) WEEK_SINGLE else WEEK_DOUBLE
     }
 
     private fun resolveWeekType(
@@ -311,7 +311,7 @@ class BootReceiver : BroadcastReceiver() {
             .maxByOrNull { it.weekIndex }
         if (prior != null) {
             val distance = wn - prior.weekIndex
-            return if (distance.isEven) {
+            return if (distance % 2 == 0) {
                 prior.weekType
             } else {
                 if (prior.weekType == WEEK_SINGLE) WEEK_DOUBLE else WEEK_SINGLE
