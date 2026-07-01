@@ -46,9 +46,15 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- directBootAware: allows receiver/service to run before user unlocks
+             the device (LOCKED_BOOT_COMPLETED). Critical for self-start after
+             reboot on Chinese OEM ROMs (MIUI/HyperOS/ColorOS/OriginOS/etc).
+             permission: only system can deliver BOOT_COMPLETED to us. -->
         <receiver
             android:name=".BootReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:directBootAware="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
@@ -61,23 +67,27 @@
         <!-- AlarmReceiver: receives AlarmManager broadcasts to start the ringing service -->
         <receiver
             android:name=".AlarmReceiver"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- TimerReceiver: receives AlarmManager broadcasts for countdown timer completion -->
         <receiver
             android:name=".TimerReceiver"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- AlarmRingingService: foreground service for continuous alarm sound + vibration -->
         <service
             android:name=".AlarmRingingService"
             android:foregroundServiceType="specialUse"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- TimerRingingService: foreground service for continuous timer alarm sound + vibration -->
         <service
             android:name=".TimerRingingService"
             android:foregroundServiceType="specialUse"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- WorkManager auto-initializes via Android Startup library -->
