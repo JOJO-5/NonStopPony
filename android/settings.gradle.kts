@@ -11,13 +11,15 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        // Aliyun mirrors for users in China. Listed after the official
+        // repos so international CI (GitHub Actions) hits google() first.
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
-        google()
-        mavenCentral()
-        gradlePluginPortal()
     }
 }
 

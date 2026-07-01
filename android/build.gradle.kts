@@ -1,10 +1,12 @@
 allprojects {
     repositories {
+        google()
+        mavenCentral()
+        // Aliyun mirrors for users in China. Listed after the official
+        // repos so international CI (GitHub Actions) hits google() first.
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
-        google()
-        mavenCentral()
     }
 }
 
