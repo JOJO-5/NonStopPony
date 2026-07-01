@@ -18,3 +18,7 @@
     @androidx.annotation.Keep <fields>;
     @androidx.annotation.Keep <methods>;
 }
+
+# Flutter play core (split install / deferred components)
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
