@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [ master, main ]
 
+
+# Required so softprops/action-gh-release can create Releases + upload APK/AAB.
+# Without this, the default read-only GITHUB_TOKEN fails the upload step.
+permissions:
+  contents: write
 jobs:
   test:
     name: Test & Analyze
