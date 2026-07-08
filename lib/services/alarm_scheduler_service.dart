@@ -34,11 +34,17 @@ class AlarmSchedulerService {
     DateTime start;
     switch (alarm.repeatType) {
       case RepeatType.once:
-        // One-time alarm: only trigger if time hasn't passed yet
-        if (now.isBefore(alarmTimeToday)) {
+        // One-time alarm: honor the weekdays filter too. A once alarm
+        // with weekdays=[Saturday] must not fire today if today is not
+        // Saturday, even if the time-of-day has not yet passed.
+        final todayRings = shouldRingOnDate(alarm, today, effectiveOverrides);
+        if (todayRings && now.isBefore(alarmTimeToday)) {
           return alarmTimeToday;
         }
-        return null; // Already expired — no next trigger
+        // today was a valid ring day but the time already passed OR
+        // today is not a ring day. Either way, a one-time alarm never
+        // re-fires, so there is no future trigger.
+        return null;
       case RepeatType.daily:
         start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
         break;
@@ -105,7 +111,7 @@ class AlarmSchedulerService {
       }
       current = next;
       // Guard against infinite loop
-      if (triggers.length > 7) break;
+      if (triggers.length >= 7) break;
     }
     return triggers;
   }

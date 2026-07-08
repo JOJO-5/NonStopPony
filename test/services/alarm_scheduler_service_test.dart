@@ -77,7 +77,65 @@ void main() {
         expect(result!.weekday == DateTime.saturday || result.weekday == DateTime.sunday, isTrue);
       });
 
-      test('custom: respects weekdays list', () async {
+      // Regression: once alarms must honor the weekdays filter.
+      // Before the fix, calculateNextTrigger returned alarmTimeToday for
+      // once without consulting shouldRingOnDate, so a once alarm with
+      // weekdays=[Saturday] would fire on the day it was created even if
+      // that day was not Saturday.
+      test('once: honors weekdays filter (returns null when today is not in weekdays)', () async {
+        final now = DateTime.now();
+        // Pick a weekdays list that excludes today.
+        final todayDow = now.weekday;
+        final otherDow = todayDow == 6 ? 7 : 6; // Saturday (6) or Sunday (7)
+        // Use a future time today to make sure we are testing the weekdays
+        // filter, not the time-already-passed path.
+        final futureMinute = (now.minute + 30) % 60;
+        final futureHour = (now.minute + 30) >= 60 ? (now.hour + 1) % 24 : now.hour;
+        final alarm = AlarmInfo.create(
+          hour: futureHour,
+          minute: futureMinute,
+          repeatType: RepeatType.once,
+          weekdays: [otherDow],
+        );
+
+        final result = await AlarmSchedulerService.calculateNextTrigger(alarm);
+        expect(result, isNull,
+            reason: 'once alarm with weekdays excluding today must not fire');
+      });
+
+      test('once: fires today when today IS in weekdays', () async {
+        final now = DateTime.now();
+        final futureMinute = (now.minute + 30) % 60;
+        final futureHour = (now.minute + 30) >= 60 ? (now.hour + 1) % 24 : now.hour;
+        final alarm = AlarmInfo.create(
+          hour: futureHour,
+          minute: futureMinute,
+          repeatType: RepeatType.once,
+          weekdays: [now.weekday],
+        );
+
+        final result = await AlarmSchedulerService.calculateNextTrigger(alarm);
+        expect(result, isNotNull);
+        expect(result!.weekday, now.weekday);
+      });
+
+      test('once: returns null when time already passed and weekdays include today', () async {
+        final now = DateTime.now();
+        // Past time today: hour=0, minute=0 is always in the past unless
+        // we are at exactly 00:00:00.
+        final alarm = AlarmInfo.create(
+          hour: 0,
+          minute: 0,
+          repeatType: RepeatType.once,
+          weekdays: [now.weekday],
+        );
+
+        final result = await AlarmSchedulerService.calculateNextTrigger(alarm);
+        // Time already passed (today 00:00 vs now which is later) so once
+        // must not re-fire.
+        expect(result, isNull);
+      });
+            test('custom: respects weekdays list', () async {
         // Set alarm for Monday (1) and Wednesday (3)
         final alarm = AlarmInfo.create(
           hour: 8,

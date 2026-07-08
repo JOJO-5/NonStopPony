@@ -116,11 +116,15 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
 
   /// Builds a single week row with label, badge, and day cells.
   Widget _buildWeekRow(BuildContext context, _WeekData week) {
-    final weekType = widget.provider.resolveWeekType(
-      widget.year,
-      widget.month,
-      week.weekOfMonth,
-    );
+    // Use the row actual Monday to compute the week type. The previous
+    // implementation used (year, month, weekOfMonth), which can disagree
+    // with the displayed row when a month starts mid-week: the grid first
+    // row often contains days from the previous month, so the
+    // (year, month, 1) anchor would refer to a different weekNumber than
+    // the Monday shown in the row. Anchor on week.days.first (the Monday)
+    // so the badge always matches the Saturday rendered on screen.
+    final rowMonday = week.days.first;
+    final weekType = widget.provider.resolveWeekTypeByDate(rowMonday);
     final hasOverride = widget.provider.hasOverrideForWeek(
       widget.year,
       widget.month,

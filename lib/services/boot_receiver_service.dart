@@ -17,6 +17,11 @@ class BootReceiverService {
   /// in Android AlarmManager, which is idempotent.
   static Future<void> rescheduleAlarmsAfterBoot() async {
     try {
+      // Ensure DB is open. Boot path can fire before the app has called
+      // AlarmStorageService.init(); without this guard, _db (late final)
+      // would throw LateInitializationError, the catch below would swallow
+      // it, and the device would be left with no scheduled alarms.
+      await AlarmStorageService.init();
       final alarms = await AlarmStorageService.getAll();
       await AlarmSchedulerService.rescheduleAll(
         alarms.where((a) => a.isEnabled).toList(),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../models/alarm_info.dart';
 import '../models/week_schedule.dart';
@@ -58,10 +60,29 @@ class AlarmProvider extends ChangeNotifier {
   }
 
   /// Toggles the enabled state of the alarm and reloads.
+  ///
+  /// Concurrent toggleAlarm calls are serialized via [_toggleQueue] so the
+  /// second call reads the DB state committed by the first call instead of
+  /// the stale in-memory copy. Without serialization, two rapid taps could
+  /// both flip the same source value, leaving the alarm in an unintended
+  /// final state.
+  Future<void> _toggleQueue = Future.value();
+
   Future<void> toggleAlarm(int id) async {
-    final alarm = _alarms.firstWhere((a) => a.id == id);
-    await AlarmStorageService.toggleEnabled(id, !alarm.isEnabled);
-    await loadAlarms();
+    final completer = Completer<void>();
+    final previous = _toggleQueue;
+    _toggleQueue = completer.future;
+    try {
+      await previous;
+      // Read canonical state from DB rather than _alarms, so we always
+      // flip the most recently committed value.
+      final current = await AlarmStorageService.getById(id);
+      if (current == null) return;
+      await AlarmStorageService.toggleEnabled(id, !current.isEnabled);
+      await loadAlarms();
+    } finally {
+      completer.complete();
+    }
   }
 
   /// Calculates the next trigger datetime for the given alarm.
