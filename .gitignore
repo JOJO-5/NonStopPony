@@ -53,6 +53,7 @@ app.*.map.json
 /ios/Podfile.lock
 # OMC session state
 .omc/
+.omo/
 # Claude Code / OMC agent files
 .claude/
 .sisyphus/
