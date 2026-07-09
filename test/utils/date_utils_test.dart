@@ -171,8 +171,15 @@ void main() {
     group('doubleRest (双休)', () {
       test('Saturday does not ring on double-rest week', () {
         final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), false); // Sat, double
+        // Jan 13, 2024 = Saturday, week 2 (even) = double-rest → no ring
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 13), []), false);
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), false); // Sun
+      });
+
+      test('Saturday does not ring on single-rest week (workday)', () {
+        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
+        // Jan 6, 2024 = Saturday, week 1 (odd) = single-rest → Saturday is workday, no ring
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), false);
       });
 
       test('Monday-Friday ring', () {

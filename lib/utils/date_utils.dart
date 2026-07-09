@@ -120,9 +120,14 @@ bool shouldRingOnDate(
       final wt = resolveWeekType(date, overrides);
       return wt == WeekType.single;
     case RepeatType.doubleRest:
-      // Both Saturday and Sunday always off for doubleRest
+      // Saturday and Sunday never ring
       if (date.weekday == DateTime.saturday || date.weekday == DateTime.sunday) {
         return false;
+      }
+      // In singleRest week, Saturday is a workday — doubleRest should not ring
+      if (date.weekday == DateTime.saturday) {
+        final wt = resolveWeekType(date, overrides);
+        return wt == WeekType.double;
       }
       return true;
     case RepeatType.custom:

@@ -359,6 +359,11 @@ class BootReceiver : BroadcastReceiver() {
             }
             REPEAT_DOUBLE_REST -> {
                 if (dartWd == 6 || dartWd == 7) return false
+                // In singleRest week, Saturday is a workday — doubleRest should not ring
+                if (dartWd == 6) {
+                    val wt = resolveWeekType(date.timeInMillis, overrides)
+                    return wt == WEEK_DOUBLE
+                }
                 return true
             }
             REPEAT_CUSTOM -> return alarm.weekdays.contains(dartWd)
