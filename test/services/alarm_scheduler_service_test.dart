@@ -104,12 +104,20 @@ void main() {
       });
 
       test('once: fires today when today IS in weekdays', () async {
+        // Fixed 23:59 today is always in the future, regardless of minute.
+        // The original implementation used `now + 30 minutes`, which races
+        // with midnight: when now.minute >= 30 the result crosses into the
+        // next day, leaving today's alarm time in the past and triggering
+        // the (correctly) null-returning past-time path. The past-time path
+        // is covered by the dedicated test below.
         final now = DateTime.now();
-        final futureMinute = (now.minute + 30) % 60;
-        final futureHour = (now.minute + 30) >= 60 ? (now.hour + 1) % 24 : now.hour;
+        if (now.hour == 23 && now.minute >= 59) {
+          markTestSkipped('runs within the 23:59:xx window');
+          return;
+        }
         final alarm = AlarmInfo.create(
-          hour: futureHour,
-          minute: futureMinute,
+          hour: 23,
+          minute: 59,
           repeatType: RepeatType.once,
           weekdays: [now.weekday],
         );
