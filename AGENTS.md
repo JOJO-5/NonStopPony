@@ -2,18 +2,18 @@
 
 ## Project State
 
-Fresh Flutter project (`flutter create` template) — counter app in `lib/main.dart`, not yet modified. No git repo initialized. Implementation planned but not started.
+Alarm clock Flutter app with 单双周 (alternating single/double rest weekend) scheduling — fully implemented and shipping through CI-driven signed APK releases. Repo initialized on `master`, latest release tag `v2.0.3+2005`.
 
 ## Current Reality
 
-- **Entrypoint**: `lib/main.dart` — default `MyApp` / `MyHomePage` counter widget
-- **Test**: `test/widget_test.dart` — single smoke test for counter increment
-- **Only existing file**: `lib/main.dart` is the sole source file
-- **Git**: Not initialized. `git init` required before any commits.
+- **Entrypoint**: `lib/main.dart` (with `lib/app.dart` for the `MaterialApp` wrapper) — alarm list, add/edit form, full-screen ringing UI.
+- **Tests**: 105 tests across `test/models/`, `test/services/`, `test/utils/`, `test/widgets/` — all green via `flutter test`; `flutter analyze` clean.
+- **Source layout**: `lib/models/`, `lib/providers/`, `lib/services/`, `lib/screens/`, `lib/widgets/`, `lib/utils/`.
+- **Git**: initialized; remote at `https://github.com/JOJO-5/NonStopPony.git` (default branch `master`).
 
-## Planned Architecture
+## Architecture
 
-The project is scoped to become an alarm clock app with 单双周 (alternating single/double rest weekend) scheduling. Do not deviate from this stack without explicit instruction:
+Stack is fixed; do not deviate without explicit instruction.
 
 | Layer | Technology |
 |---|---|
@@ -23,7 +23,7 @@ The project is scoped to become an alarm clock app with 单双周 (alternating s
 | Formatting | intl package |
 | Linting | flutter_lints (default rules) |
 
-Planned structure (create these as implementation progresses):
+Implemented structure:
 - `lib/models/alarm_info.dart` — AlarmInfo model + RepeatType enum
 - `lib/providers/alarm_provider.dart` — ChangeNotifier for CRUD + scheduling
 - `lib/services/alarm_storage_service.dart` — sqflite operations
@@ -65,7 +65,7 @@ flutter build web                    # web build
 - **Pub mirror**: `https://pub.flutter-io.cn` (China) — do not switch to default pub.dev without approval.
 - **SDK**: `^3.9.2`, Flutter stable channel (revision `a402d9a4`).
 - **Analysis options**: `package:flutter_lints/flutter.yaml` — do not add custom rules without approval.
-- **No CI/CD**: No workflows configured yet.
+- **CI/CD**: `.github/workflows/ci.yml` runs on every push to `master` (test + analyze + build-android + build-web) and on every tag matching `v*` (signed APK + AAB uploaded to GitHub Release). Workflow needs `permissions: contents: write` for `softprops/action-gh-release@v2` to publish.
 - **Platform targets**: Android, iOS, web, Linux, macOS, Windows all scaffolded.
 
 ## Testing
