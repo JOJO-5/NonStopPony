@@ -211,6 +211,9 @@ void main() async {
   bootChannel.setMethodCallHandler((call) async {
     if (call.method == 'rescheduleAlarms') {
       await BootReceiverService.rescheduleAlarmsAfterBoot();
+      // Signal the native AlarmRescheduleWorker so it doesn't wait the
+      // full 15s MAX_WAIT_MILLIS timeout.
+      await bootChannel.invokeMethod('rescheduleComplete');
     }
   });
 
