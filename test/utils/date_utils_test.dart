@@ -329,4 +329,64 @@ void main() {
       expect(result, DateTime(2024, 1, 1));
     });
   });
+
+  group('workday (补班) policy', () {
+    AlarmInfo alarmOf(RepeatType t, {List<int> weekdays = const []}) => AlarmInfo.create(
+        hour: 7, minute: 0, repeatType: t, weekdays: weekdays);
+    final saturday = DateTime(2026, 8, 15); // Saturday
+    final sunday = DateTime(2026, 8, 16);   // Sunday
+
+    test('补班日强制 weekdays 类型响', () {
+      expect(shouldRingOnDate(alarmOf(RepeatType.weekdays), saturday, [],
+          isWorkday: true), isTrue);
+    });
+    test('补班日强制 doubleRest 响', () {
+      expect(shouldRingOnDate(alarmOf(RepeatType.doubleRest), saturday, [],
+          isWorkday: true), isTrue);
+    });
+    test('补班日强制 singleRest 周日响', () {
+      expect(shouldRingOnDate(alarmOf(RepeatType.singleRest), sunday, [],
+          isWorkday: true), isTrue);
+    });
+    test('补班日强制 daily 响', () {
+      expect(shouldRingOnDate(alarmOf(RepeatType.daily), saturday, [],
+          isWorkday: true), isTrue);
+    });
+    test('补班日不强制 custom', () {
+      expect(shouldRingOnDate(
+          alarmOf(RepeatType.custom, weekdays: [DateTime.monday]), saturday, [],
+          isWorkday: true), isFalse);
+    });
+    test('补班日不强制 once（未选星期照常响，选了则按星期）', () {
+      expect(shouldRingOnDate(alarmOf(RepeatType.once), saturday, [],
+          isWorkday: true), isTrue); // weekdays 空 → 正常规则 true
+      expect(shouldRingOnDate(
+          alarmOf(RepeatType.once, weekdays: [DateTime.monday]), saturday, [],
+          isWorkday: true), isFalse);
+    });
+  });
+
+  group('alarmTimeForDate workday Saturday', () {
+    test('双休周周六补班用周六专用时间', () {
+      final alarm = AlarmInfo.create(
+          hour: 7, minute: 0, repeatType: RepeatType.singleRest,
+          saturdayHour: 8, saturdayMinute: 30);
+      // 2026-08-15 所在周为偶数周（双休），无 override
+      final t = alarmTimeForDate(alarm, DateTime(2026, 8, 15), [],
+          isWorkday: true);
+      expect(t.hour, 8);
+      expect(t.minute, 30);
+    });
+  });
+
+  group('weekNumber negative dates', () {
+    test('2023-12-25 (周一) 为第 0 周', () {
+      expect(weekNumber(DateTime(2023, 12, 25)), 0);
+      expect(autoWeekType(DateTime(2023, 12, 25)), WeekType.double);
+    });
+    test('2023-12-18 为第 -1 周（单休，奇偶交替延续）', () {
+      expect(weekNumber(DateTime(2023, 12, 18)), -1);
+      expect(autoWeekType(DateTime(2023, 12, 18)), WeekType.single);
+    });
+  });
 }

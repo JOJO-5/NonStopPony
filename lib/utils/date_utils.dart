@@ -4,11 +4,13 @@ import '../models/week_schedule.dart';
 /// Returns the effective trigger DateTime for an [alarm] on a given [date].
 /// For singleRest alarms on a single-rest Saturday, uses [alarm.saturdayHour]
 /// and [alarm.saturdayMinute]; otherwise uses the alarm's base time.
-DateTime alarmTimeForDate(AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides) {
+DateTime alarmTimeForDate(AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides,
+    {bool isWorkday = false}) {
   if (alarm.repeatType == RepeatType.singleRest &&
       date.weekday == DateTime.saturday) {
     final wt = resolveWeekType(date, overrides);
-    if (wt == WeekType.single) {
+    // 补班周六视为工作日，同样使用周六专用时间
+    if (wt == WeekType.single || isWorkday) {
       return DateTime(date.year, date.month, date.day, alarm.saturdayHour, alarm.saturdayMinute);
     }
   }
@@ -19,8 +21,9 @@ DateTime alarmTimeForDate(AlarmInfo alarm, DateTime date, List<WeekSchedule> ove
 /// Uses simple week counting from epoch, not ISO week-of-year.
 int weekNumber(DateTime date) {
   final epoch = DateTime(2024, 1, 1);
-  final diff = date.difference(epoch);
-  return diff.inDays ~/ 7 + 1;
+  final days = date.difference(epoch).inDays;
+  // Dart ~/ 向零截断，负数需用 floor 保持周序号连续交替
+  return days < 0 ? (days / 7).floor() + 1 : days ~/ 7 + 1;
 }
 
 /// Determine auto week type based on even/odd week parity.
@@ -94,8 +97,15 @@ bool shouldRingOnDate(
   // ── Holiday/workday override (highest priority) ──
   // If this day is a statutory holiday (假期), never ring
   if (isHoliday == true) return false;
-  // If this day is a make-up workday (补班), always ring
-  if (isWorkday == true) return true;
+  // If this day is a make-up workday (补班), ring for workday-semantic types;
+  // once/custom fall through to their own rules.
+  if (isWorkday == true) {
+    final isWorkdayType = alarm.repeatType == RepeatType.daily ||
+        alarm.repeatType == RepeatType.weekdays ||
+        alarm.repeatType == RepeatType.singleRest ||
+        alarm.repeatType == RepeatType.doubleRest;
+    if (isWorkdayType) return true;
+  }
 
   switch (alarm.repeatType) {
     case RepeatType.once:
@@ -123,11 +133,6 @@ bool shouldRingOnDate(
       // Saturday and Sunday never ring
       if (date.weekday == DateTime.saturday || date.weekday == DateTime.sunday) {
         return false;
-      }
-      // In singleRest week, Saturday is a workday — doubleRest should not ring
-      if (date.weekday == DateTime.saturday) {
-        final wt = resolveWeekType(date, overrides);
-        return wt == WeekType.double;
       }
       return true;
     case RepeatType.custom:
