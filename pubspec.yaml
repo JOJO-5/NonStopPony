@@ -58,6 +58,7 @@ dependencies:
   just_audio: ^0.9.37
   audio_session: ^0.1.18
   vibration: ^3.1.0
+  flutter_timezone: ^5.1.0
 
 dev_dependencies:
   flutter_test:

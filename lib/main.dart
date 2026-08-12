@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'providers/alarm_provider.dart';
 import 'providers/timer_provider.dart';
 import 'providers/stopwatch_provider.dart';
@@ -169,7 +170,15 @@ void main() async {
   // Must also set local location so tz.local reflects the device timezone,
   // otherwise zonedSchedule will use UTC and alarms won't fire at the right time.
   tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+  // Use the device timezone so zonedSchedule fires at the right local time
+  // on any device; fall back to Asia/Shanghai when detection fails.
+  try {
+    final tzName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(tzName));
+  } catch (e) {
+    debugPrint('Failed to detect device timezone, defaulting to Asia/Shanghai: $e');
+    tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+  }
 
   // Initialize sqflite_common_ffi for desktop platforms only.
   // On Android/iOS, sqflite uses the native implementation.
