@@ -42,7 +42,6 @@ class BootReceiver : BroadcastReceiver() {
         private const val DB_NAME = "alarm_clock.db"
         private const val ALARMS_TABLE = "alarms"
         private const val WEEK_SCHEDULE_TABLE = "week_schedule"
-        private const val PREFS_NAME = "FlutterSharedPreferences"
         // Epoch for weekNumber() — must match lib/utils/date_utils.dart
         private val WEEK_EPOCH_MS = java.util.GregorianCalendar(2024, 0, 1).timeInMillis
 
@@ -110,8 +109,7 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         val overrides = readWeekScheduleOverrides(context)
-        val holidaySet = readDateSet(context, "flutter.holiday_dates")
-        val makeupSet = readDateSet(context, "flutter.makeup_workday_dates")
+        val (holidaySet, makeupSet) = readHolidaySetsFromDb(context)
 
         val alarmManager =
             context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -274,26 +272,47 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     /**
-     * Read holiday / make-up workday sets that HolidayService wrote to
-     * SharedPreferences. Stored as comma-separated yyyy-MM-dd strings.
+     * Read holiday / make-up workday sets directly from the holiday_cache
+     * table that HolidayService writes. (Dart side never writes the legacy
+     * flutter.holiday_dates prefs keys, so reading prefs always yielded
+     * empty sets and the native path ignored holidays entirely.)
+     * Returns Pair(holidaySet, makeupSet) of yyyy-MM-dd strings.
      */
-    private fun readDateSet(context: Context, key: String): Set<String> {
-        return try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val raw = prefs.getString(key, null) ?: return emptySet()
-            raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    private fun readHolidaySetsFromDb(context: Context): Pair<Set<String>, Set<String>> {
+        val db = openDb(context) ?: return Pair(emptySet(), emptySet())
+        val holidays = mutableSetOf<String>()
+        val makeups = mutableSetOf<String>()
+        val cursor: Cursor? = try {
+            db.rawQuery(
+                "SELECT date, isHoliday, isWorkday FROM holiday_cache",
+                null
+            )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to read SharedPreferences $key", e)
-            emptySet()
+            Log.e(TAG, "Failed to query holiday_cache", e)
+            null
         }
+        cursor?.use { c ->
+            val dIdx = c.getColumnIndexOrThrow("date")
+            val hIdx = c.getColumnIndexOrThrow("isHoliday")
+            val wIdx = c.getColumnIndexOrThrow("isWorkday")
+            while (c.moveToNext()) {
+                val d = c.getString(dIdx)
+                if (c.getInt(hIdx) == 1) holidays.add(d)
+                if (c.getInt(wIdx) == 1) makeups.add(d)
+            }
+        }
+        db.close()
+        return Pair(holidays, makeups)
     }
 
     // ── Algorithm (mirror of lib/utils/date_utils.dart) ───────────────────
 
     private fun weekNumber(dateMs: Long): Int {
         val diff = dateMs - WEEK_EPOCH_MS
-        val days = if (diff < 0) (diff - 86_400_000L) / 86_400_000L else diff / 86_400_000L
-        return (days / 7).toInt() + 1
+        // Math.floorDiv keeps negative weeks alternating correctly
+        // (Kotlin `/` truncates toward zero, same bug Dart had before fix).
+        val days = Math.floorDiv(diff, 86_400_000L)
+        return Math.floorDiv(days, 7) + 1
     }
 
     private fun autoWeekType(dateMs: Long): Int {
@@ -330,7 +349,15 @@ class BootReceiver : BroadcastReceiver() {
         if (!alarm.isEnabled) return false
         val dateKey = ymd(date)
         if (dateKey in holidaySet) return false
-        if (dateKey in makeupSet) return true
+        // Make-up workday (补班): force ring for workday-semantic types only;
+        // once/custom fall through to their own rules (mirror of Dart).
+        if (dateKey in makeupSet) {
+            val isWorkdayType = alarm.repeatType == REPEAT_DAILY ||
+                alarm.repeatType == REPEAT_WEEKDAYS ||
+                alarm.repeatType == REPEAT_SINGLE_REST ||
+                alarm.repeatType == REPEAT_DOUBLE_REST
+            if (isWorkdayType) return true
+        }
 
         // Calendar.DAY_OF_WEEK: 1=Sun..7=Sat. Convert to Dart convention.
         val calWd = date.get(Calendar.DAY_OF_WEEK)
@@ -359,11 +386,6 @@ class BootReceiver : BroadcastReceiver() {
             }
             REPEAT_DOUBLE_REST -> {
                 if (dartWd == 6 || dartWd == 7) return false
-                // In singleRest week, Saturday is a workday — doubleRest should not ring
-                if (dartWd == 6) {
-                    val wt = resolveWeekType(date.timeInMillis, overrides)
-                    return wt == WEEK_DOUBLE
-                }
                 return true
             }
             REPEAT_CUSTOM -> return alarm.weekdays.contains(dartWd)
@@ -375,6 +397,7 @@ class BootReceiver : BroadcastReceiver() {
         alarm: AlarmRow,
         date: Calendar,
         overrides: List<WeekOverride>,
+        makeupSet: Set<String>,
     ): Calendar {
         val cal = Calendar.getInstance().apply {
             timeInMillis = date.timeInMillis
@@ -387,7 +410,9 @@ class BootReceiver : BroadcastReceiver() {
             date.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY
         ) {
             val wt = resolveWeekType(date.timeInMillis, overrides)
-            if (wt == WEEK_SINGLE) {
+            // 补班周六视为工作日，同样使用周六专用时间（mirror of Dart）
+            val isMakeup = ymd(date) in makeupSet
+            if (wt == WEEK_SINGLE || isMakeup) {
                 val sh = alarm.saturdayHour ?: alarm.hour
                 val sm = alarm.saturdayMinute ?: alarm.minute
                 cal.set(Calendar.HOUR_OF_DAY, sh)
@@ -417,11 +442,13 @@ class BootReceiver : BroadcastReceiver() {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        val todayAlarmTime = alarmTimeForDate(alarm, today, overrides)
+        val todayAlarmTime = alarmTimeForDate(alarm, today, overrides, makeupSet)
 
         val startCal: Calendar = when (alarm.repeatType) {
             REPEAT_ONCE -> {
-                if (now.before(todayAlarmTime)) return todayAlarmTime.timeInMillis
+                // Mirror Dart: honor weekdays + holiday/makeup for today.
+                val todayRings = shouldRingOnDate(alarm, today, overrides, holidaySet, makeupSet)
+                if (todayRings && now.before(todayAlarmTime)) return todayAlarmTime.timeInMillis
                 return null
             }
             else -> {
@@ -438,7 +465,7 @@ class BootReceiver : BroadcastReceiver() {
                 add(Calendar.DAY_OF_YEAR, i)
             }
             if (shouldRingOnDate(alarm, candidate, overrides, holidaySet, makeupSet)) {
-                val trigger = alarmTimeForDate(alarm, candidate, overrides)
+                val trigger = alarmTimeForDate(alarm, candidate, overrides, makeupSet)
                 if (trigger.timeInMillis > from) return trigger.timeInMillis
             }
         }
