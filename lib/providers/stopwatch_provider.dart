@@ -35,11 +35,23 @@ class StopwatchProvider extends ChangeNotifier {
   StopwatchState get state => _state;
   List<Lap> get laps => List.unmodifiable(_laps);
 
-  String get formattedTime {
-    final cents = (_elapsed.inMilliseconds ~/ 10) % 100;
-    final seconds = _elapsed.inSeconds % 60;
-    final minutes = _elapsed.inMinutes % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${cents.toString().padLeft(2, '0')}';
+  String get formattedTime => StopwatchProvider.format(_elapsed);
+
+  /// Formats a duration as stopwatch display text.
+  /// Under 1 hour: MM:SS.cc. 1 hour or more: HH:MM:SS.cc.
+  @visibleForTesting
+  static String format(Duration d) {
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
+    final seconds = d.inSeconds % 60;
+    final cents = (d.inMilliseconds ~/ 10) % 100;
+    final mm = minutes.toString().padLeft(2, '0');
+    final ss = seconds.toString().padLeft(2, '0');
+    final cc = cents.toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:$mm:$ss.$cc';
+    }
+    return '$mm:$ss.$cc';
   }
 
   /// Returns the index of the best (fastest) lap, or -1 if no laps
