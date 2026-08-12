@@ -117,6 +117,9 @@ class TimerProvider extends ChangeNotifier {
     _timer = null;
     // Cancel the native alarm while paused — it will be rescheduled on resume
     TimerBackgroundService.cancelTimerAlarm();
+    // Clear persisted endTime so a killed process doesn't restore a
+    // "running" timer the user explicitly paused.
+    _clearPersistedTimer();
     notifyListeners();
   }
 
