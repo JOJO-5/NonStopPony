@@ -294,18 +294,45 @@ class AlarmNotificationService {
     stopAlarmRing();
   }
 
-  /// Snoozes an alarm for 5 minutes.
+  /// Snoozes an alarm using its configured [AlarmInfo.snoozeMinutes].
   ///
-  /// Cancels the current notification and schedules a new one 5 minutes from now.
-  Future<void> snoozeAlarm(int alarmId, String? title, String? body, {String ringtone = 'default'}) async {
-    // Cancel current notification
+  /// Schedules through the native AlarmManager channel so the snoozed
+  /// alarm fires via AlarmReceiver → AlarmRingingService (continuous
+  /// ringing + vibration), same as a normal alarm. Falls back to
+  /// zonedSchedule (notification-only) if the channel is unavailable.
+  Future<void> snoozeAlarm(int alarmId, String? title, String? body) async {
+    AlarmInfo? alarm;
+    try {
+      alarm = await AlarmStorageService.getById(alarmId);
+    } catch (e) {
+      debugPrint('snoozeAlarm: failed to load alarm $alarmId: $e');
+    }
+    final minutes = alarm?.snoozeMinutes ?? 5;
+    final scheduledDate = DateTime.now().add(Duration(minutes: minutes));
+
+    if (Platform.isAndroid) {
+      try {
+        await _alarmSchedulerChannel.invokeMethod<void>('scheduleExactAlarm', {
+          'alarmId': alarmId,
+          'epochMillis': scheduledDate.millisecondsSinceEpoch,
+          'title': title ?? '战马闹钟',
+          'body': body ?? '稍后提醒',
+          'ringtoneUri': alarm?.ringtone ?? 'default',
+        });
+        debugPrint('Snoozed alarm $alarmId via AlarmManager for $minutes min');
+        return;
+      } catch (e) {
+        debugPrint('AlarmManager snooze failed, falling back to zonedSchedule: $e');
+      }
+    }
+
+    // Fallback: notification-only (zonedSchedule never starts the ringing service)
     try {
       await _plugin.cancel(id: alarmId);
     } catch (e) {
       debugPrint('snoozeAlarm cancel failed (expected in test env): $e');
     }
-    // Schedule new notification 5 minutes from now, preserving the alarm's ringtone
-    final sound = _ringtoneToSound(ringtone);
+    final sound = _ringtoneToSound(alarm?.ringtone ?? 'default');
     final androidDetails = AndroidNotificationDetails(
       'alarm_channel_v3',
       '战马闹钟',
@@ -335,7 +362,6 @@ class AlarmNotificationService {
       android: androidDetails,
       iOS: iosDetails,
     );
-    final scheduledDate = DateTime.now().add(const Duration(minutes: 5));
     await _plugin.zonedSchedule(
       id: alarmId,
       title: title ?? '战马闹钟',
