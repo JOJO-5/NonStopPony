@@ -312,7 +312,7 @@ class BootReceiver : BroadcastReceiver() {
         // Math.floorDiv keeps negative weeks alternating correctly
         // (Kotlin `/` truncates toward zero, same bug Dart had before fix).
         val days = Math.floorDiv(diff, 86_400_000L)
-        return Math.floorDiv(days, 7) + 1
+        return Math.floorDiv(days, 7L).toInt() + 1
     }
 
     private fun autoWeekType(dateMs: Long): Int {
