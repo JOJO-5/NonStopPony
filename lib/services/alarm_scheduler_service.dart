@@ -28,7 +28,19 @@ class AlarmSchedulerService {
     final effectiveOverrides = overrides ?? [];
     final now = from ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final alarmTimeToday = alarmTimeForDate(alarm, today, effectiveOverrides);
+
+    // Today's holiday status (needed for the once / start-day decision)
+    bool todayIsHoliday = false;
+    bool todayIsWorkday = false;
+    try {
+      final info = await HolidayService.getHolidayInfo(today);
+      todayIsHoliday = info?.isHoliday ?? false;
+      todayIsWorkday = info?.isWorkday ?? false;
+    } catch (e) {
+      debugPrint('Holiday check failed for today: $e');
+    }
+    final alarmTimeToday = alarmTimeForDate(alarm, today, effectiveOverrides,
+        isWorkday: todayIsWorkday);
 
     // Start date for search
     DateTime start;
@@ -37,7 +49,8 @@ class AlarmSchedulerService {
         // One-time alarm: honor the weekdays filter too. A once alarm
         // with weekdays=[Saturday] must not fire today if today is not
         // Saturday, even if the time-of-day has not yet passed.
-        final todayRings = shouldRingOnDate(alarm, today, effectiveOverrides);
+        final todayRings = shouldRingOnDate(alarm, today, effectiveOverrides,
+            isHoliday: todayIsHoliday, isWorkday: todayIsWorkday);
         if (todayRings && now.isBefore(alarmTimeToday)) {
           return alarmTimeToday;
         }
@@ -45,39 +58,30 @@ class AlarmSchedulerService {
         // today is not a ring day. Either way, a one-time alarm never
         // re-fires, so there is no future trigger.
         return null;
-      case RepeatType.daily:
-        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
-        break;
-      case RepeatType.weekdays:
-        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
-        break;
-      case RepeatType.weekends:
-        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
-        break;
-      case RepeatType.singleRest:
-      case RepeatType.doubleRest:
-      case RepeatType.custom:
-        start = now.isBefore(alarmTimeToday) ? today : today.add(const Duration(days: 1));
-        break;
+      default:
+        start = now.isBefore(alarmTimeToday)
+            ? today
+            : today.add(const Duration(days: 1));
     }
 
     // Search with holiday/workday checks
     for (int i = 0; i < 365; i++) {
       final candidate = start.add(Duration(days: i));
 
-      // Check holiday/workday status
-      bool? isHoliday;
-      bool? isWorkday;
+      // Check holiday/workday status (single query, both flags)
+      HolidayInfo? info;
       try {
-        isHoliday = await HolidayService.isHoliday(candidate);
-        isWorkday = await HolidayService.isWorkday(candidate);
+        info = await HolidayService.getHolidayInfo(candidate);
       } catch (e) {
         debugPrint('Holiday check failed for $candidate: $e');
       }
+      final isHoliday = info?.isHoliday ?? false;
+      final isWorkday = info?.isWorkday ?? false;
 
       if (shouldRingOnDate(alarm, candidate, effectiveOverrides,
           isHoliday: isHoliday, isWorkday: isWorkday)) {
-        return alarmTimeForDate(alarm, candidate, effectiveOverrides);
+        return alarmTimeForDate(alarm, candidate, effectiveOverrides,
+            isWorkday: isWorkday);
       }
     }
     return null;
@@ -98,6 +102,8 @@ class AlarmSchedulerService {
     var current = first;
     while (current.isBefore(endDate)) {
       triggers.add(current);
+      // One-time alarms have at most one future trigger.
+      if (alarm.repeatType == RepeatType.once) break;
       // Search for the next occurrence starting from the day after current
       final nextDay = DateTime(current.year, current.month, current.day)
           .add(const Duration(days: 1));
@@ -130,18 +136,16 @@ class AlarmSchedulerService {
     final nextDate = await calculateNextTrigger(alarm, overrides: overrides);
     if (nextDate == null) return;
 
-    // combine the date with the alarm's hour:minute
-    final scheduledDate = alarmTimeForDate(alarm, nextDate, overrides ?? []);
-
+    // nextDate already carries the correct trigger time-of-day.
     // safety: if still in the past, skip (e.g. one-time alarm already fired)
-    if (scheduledDate.isBefore(DateTime.now())) return;
+    if (nextDate.isBefore(DateTime.now())) return;
 
     try {
       await AlarmNotificationService().scheduleAlarmNotification(
         alarmId: alarm.id!,
         title: alarm.label ?? '闹钟',
         body: '到达设定时间',
-        scheduledDate: scheduledDate,
+        scheduledDate: nextDate,
         requireExact: true,
         ringtone: alarm.ringtone,
       );
@@ -154,7 +158,7 @@ class AlarmSchedulerService {
           alarmId: alarm.id!,
           title: alarm.label ?? '闹钟',
           body: '到达设定时间',
-          scheduledDate: scheduledDate,
+          scheduledDate: nextDate,
           requireExact: false,
           ringtone: alarm.ringtone,
         );

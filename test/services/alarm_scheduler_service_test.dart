@@ -220,6 +220,22 @@ void main() {
 
         expect(result, isEmpty);
       });
+
+      test('once 闹钟最多返回 1 个未来触发器', () async {
+        final now = DateTime.now();
+        if (now.hour == 23 && now.minute >= 59) {
+          markTestSkipped('runs within the 23:59:xx window');
+          return;
+        }
+        final alarm = AlarmInfo.create(
+          hour: 23,
+          minute: 59,
+          repeatType: RepeatType.once,
+        );
+        final list = await AlarmSchedulerService.calculateNext7Days(alarm);
+        expect(list.length, lessThanOrEqualTo(1),
+            reason: 'once alarm must not produce triggers on consecutive days');
+      });
     });
 
     group('scheduleAlarm and cancelAlarm', () {
