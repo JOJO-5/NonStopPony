@@ -28,6 +28,15 @@ class AlarmProvider extends ChangeNotifier {
       // Attempt to reschedule (non-critical — alarms still show even if scheduling fails)
       final overrides = await ScheduleStorageService.getAll();
       await AlarmSchedulerService.rescheduleAll(_alarms, overrides: overrides);
+
+      // Cancel any armed native alarms for disabled entries. Without this,
+      // toggling a switch off leaves the previously scheduled AlarmManager
+      // entry alive and the alarm still rings.
+      for (final alarm in _alarms) {
+        if (!alarm.isEnabled && alarm.id != null) {
+          await AlarmSchedulerService.cancelAlarm(alarm.id!);
+        }
+      }
     } catch (e) {
       // Ensure alarms still display even if scheduling fails
       if (!_loaded) {
