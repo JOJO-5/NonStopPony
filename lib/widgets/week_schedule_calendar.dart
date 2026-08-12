@@ -137,7 +137,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: GestureDetector(
-        onTap: () => _showWeekTypeSheet(context, week.weekOfMonth, weekType),
+        onTap: () => _showWeekTypeSheet(context, week.weekOfMonth, weekType, week.days.first),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
@@ -314,6 +314,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
     BuildContext context,
     int weekOfMonth,
     WeekType currentType,
+    DateTime rowMonday,
   ) {
     showModalBottomSheet(
       context: context,
@@ -326,6 +327,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
           year: widget.year,
           month: widget.month,
           weekOfMonth: weekOfMonth,
+          rowMonday: rowMonday,
           currentType: currentType,
           provider: widget.provider,
         );
@@ -379,6 +381,7 @@ class _WeekTypeSheet extends StatelessWidget {
   final int year;
   final int month;
   final int weekOfMonth;
+  final DateTime rowMonday;
   final WeekType currentType;
   final ScheduleProvider provider;
 
@@ -386,6 +389,7 @@ class _WeekTypeSheet extends StatelessWidget {
     required this.year,
     required this.month,
     required this.weekOfMonth,
+    required this.rowMonday,
     required this.currentType,
     required this.provider,
   });
@@ -395,9 +399,7 @@ class _WeekTypeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final autoType = alarm_utils.autoWeekType(
-      DateTime(year, month, (weekOfMonth - 1) * 7 + 1),
-    );
+    final autoType = alarm_utils.autoWeekType(rowMonday);
     final hasOverride = provider.hasOverrideForWeek(year, month, weekOfMonth);
 
     return Padding(
@@ -557,7 +559,8 @@ class _WeekTypeSheet extends StatelessWidget {
   }
 
   Future<void> _selectType(BuildContext context, WeekType type) async {
-    await provider.setOverride(year, month, weekOfMonth, type);
+    await provider.setOverride(year, month, weekOfMonth, type,
+        weekIndex: alarm_utils.weekNumber(rowMonday));
     if (context.mounted) Navigator.of(context).pop();
   }
 
