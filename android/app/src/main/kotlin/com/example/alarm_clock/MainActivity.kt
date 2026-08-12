@@ -159,7 +159,7 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "stopAlarmRing" -> {
-                    AlarmRingingService.stop(this)
+                    AlarmRingingService.stop(this, fromFlutter = true)
                     result.success(null)
                 }
                 else -> result.notImplemented()

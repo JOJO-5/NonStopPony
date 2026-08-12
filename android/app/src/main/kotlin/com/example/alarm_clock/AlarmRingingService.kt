@@ -107,10 +107,13 @@ class AlarmRingingService : Service() {
 
         /**
          * Convenience method to stop the ringing service from any Context.
+         * [fromFlutter] marks the stop as initiated by the Dart side (which
+         * reschedules alarms itself), so no native reschedule is enqueued.
          */
-        fun stop(context: Context) {
+        fun stop(context: Context, fromFlutter: Boolean = false) {
             val intent = Intent(context, AlarmRingingService::class.java).apply {
                 action = ACTION_STOP
+                putExtra("fromFlutter", fromFlutter)
             }
             context.startService(intent)
         }
@@ -128,6 +131,12 @@ class AlarmRingingService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopRinging()
+                // Notification STOP button path has no Flutter involvement:
+                // reschedule the next occurrence here so repeating alarms
+                // don't lose their schedule until the next app launch.
+                if (intent.getBooleanExtra("fromFlutter", false) != true) {
+                    rescheduleNext()
+                }
                 return START_NOT_STICKY
             }
             ACTION_START -> {
@@ -160,14 +169,23 @@ class AlarmRingingService : Service() {
         stopRinging()
         // Reschedule the next alarm when the user swipes away the app from recents.
         // This ensures alarms still fire even after the app process is killed.
+        rescheduleNext()
+        super.onTaskRemoved(rootIntent)
+    }
+
+    /**
+     * Enqueues a one-shot AlarmRescheduleWorker. Rescheduling is idempotent
+     * (same alarmId replaces the PendingIntent), so double-enqueues with the
+     * Dart-side reschedule are harmless.
+     */
+    private fun rescheduleNext() {
         try {
             val workRequest = androidx.work.OneTimeWorkRequestBuilder<AlarmRescheduleWorker>().build()
             androidx.work.WorkManager.getInstance(applicationContext).enqueue(workRequest)
-            Log.d(TAG, "onTaskRemoved: enqueued AlarmRescheduleWorker")
+            Log.d(TAG, "Enqueued AlarmRescheduleWorker")
         } catch (e: Exception) {
-            Log.e(TAG, "onTaskRemoved: failed to enqueue reschedule work", e)
+            Log.e(TAG, "Failed to enqueue reschedule work", e)
         }
-        super.onTaskRemoved(rootIntent)
     }
 
     /**
