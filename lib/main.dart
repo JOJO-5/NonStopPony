@@ -173,8 +173,8 @@ void main() async {
   // Use the device timezone so zonedSchedule fires at the right local time
   // on any device; fall back to Asia/Shanghai when detection fails.
   try {
-    final tzName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(tzName));
+    final info = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(info.identifier));
   } catch (e) {
     debugPrint('Failed to detect device timezone, defaulting to Asia/Shanghai: $e');
     tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
