@@ -69,6 +69,19 @@ class HolidayService {
     ''');
   }
 
+  /// Parses a timor.tech holiday date key into a DateTime.
+  /// Accepts both "01-01" (dash, zero-padded) and "1.1" (dot, unpadded)
+  /// formats — the API has returned both over time.
+  static DateTime parseDateKey(String key, int year) {
+    final parts = key.split(RegExp(r'[-.]'));
+    if (parts.length != 2) {
+      throw FormatException('Unexpected holiday date key: $key');
+    }
+    final month = int.parse(parts[0]);
+    final day = int.parse(parts[1]);
+    return DateTime(year, month, day);
+  }
+
   /// Fetches holiday data for the given year from API and caches it.
   /// Returns the number of days cached.
   static Future<int> fetchAndCacheYear(int year) async {
@@ -101,14 +114,10 @@ class HolidayService {
       // Use a batch for efficient insertion
       final batch = db.batch();
       for (final entry in holiday.entries) {
-        final dateStr = entry.key; // e.g. "1.1"
+        final dateStr = entry.key; // e.g. "01-01" or "1.1"
         final info = entry.value as Map<String, dynamic>;
 
-        // Parse date key: API returns "01-01" format (MM-DD with dash separator)
-        final parts = dateStr.split('-');
-        final month = int.parse(parts[0]);
-        final day = int.parse(parts[1]);
-        final date = DateTime(year, month, day);
+        final date = parseDateKey(dateStr, year);
         final isoDate = date.toIso8601String().substring(0, 10);
 
         final isHoliday = info['holiday'] as bool? ?? false;
@@ -133,8 +142,8 @@ class HolidayService {
       await batch.commit(noResult: true);
       debugPrint('Cached $count holiday entries for $year');
       return count;
-    } catch (e) {
-      debugPrint('Failed to fetch holiday data for $year: $e');
+    } catch (e, stack) {
+      debugPrint('Failed to fetch holiday data for $year: $e\n$stack');
       return 0;
     } finally {
       client.close();
