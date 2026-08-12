@@ -4,7 +4,9 @@ import '../models/alarm_info.dart';
 import '../models/week_schedule.dart';
 import '../utils/date_utils.dart';
 import 'alarm_notification_service.dart';
+import 'alarm_storage_service.dart';
 import 'holiday_service.dart';
+import 'schedule_storage_service.dart';
 
 /// Service for calculating next alarm trigger times and managing alarm scheduling.
 ///
@@ -165,6 +167,20 @@ class AlarmSchedulerService {
       } catch (e2) {
         debugPrint('Failed to schedule alarm ${alarm.id} (inexact too): $e2');
       }
+    }
+  }
+
+  /// Called when an alarm is dismissed (user taps 关闭).
+  /// Repeating alarms get their next trigger scheduled;
+  /// one-time alarms are disabled so the UI switch reflects reality.
+  static Future<void> handleDismissed(int alarmId) async {
+    final alarm = await AlarmStorageService.getById(alarmId);
+    if (alarm == null) return;
+    if (alarm.repeatType == RepeatType.once) {
+      await AlarmStorageService.toggleEnabled(alarmId, false);
+    } else {
+      final overrides = await ScheduleStorageService.getAll();
+      await scheduleAlarm(alarm, overrides: overrides);
     }
   }
 

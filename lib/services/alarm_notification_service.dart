@@ -11,7 +11,6 @@ import '../screens/alarm_fullscreen_screen.dart';
 import '../models/alarm_info.dart';
 import '../services/alarm_storage_service.dart';
 import '../services/alarm_scheduler_service.dart';
-import '../services/schedule_storage_service.dart';
 
 /// Global navigator key so [AlarmNotificationService] can push routes without
 /// a BuildContext (notification tap from background / lock screen).
@@ -154,17 +153,13 @@ class AlarmNotificationService {
     _routeToAlarmScreen(response.payload);
   }
 
-  /// Reschedule alarm after dismiss for repeating alarms.
+  /// Handle a dismissed alarm: reschedule repeating alarms, disable once alarms.
   Future<void> _rescheduleAfterDismiss(int alarmId) async {
     try {
-      final alarm = await AlarmStorageService.getById(alarmId);
-      if (alarm != null && alarm.repeatType != RepeatType.once) {
-        final overrides = await ScheduleStorageService.getAll();
-        await AlarmSchedulerService.scheduleAlarm(alarm, overrides: overrides);
-        debugPrint('Rescheduled repeating alarm $alarmId after STOP_ALARM');
-      }
+      await AlarmSchedulerService.handleDismissed(alarmId);
+      debugPrint('Handled dismissed alarm $alarmId');
     } catch (e) {
-      debugPrint('Failed to reschedule alarm $alarmId: $e');
+      debugPrint('Failed to handle dismissed alarm $alarmId: $e');
     }
   }
 
@@ -515,16 +510,13 @@ void _onBackgroundNotificationResponse(NotificationResponse response) {
   }
 }
 
-/// Reschedule alarm in background for repeating alarms.
+/// Handle a dismissed alarm in background: reschedule repeating alarms,
+/// disable once alarms.
 Future<void> _rescheduleInBackground(int alarmId) async {
   try {
-    final alarm = await AlarmStorageService.getById(alarmId);
-    if (alarm != null && alarm.repeatType != RepeatType.once) {
-      final overrides = await ScheduleStorageService.getAll();
-      await AlarmSchedulerService.scheduleAlarm(alarm, overrides: overrides);
-      debugPrint('Rescheduled repeating alarm $alarmId in background');
-    }
+    await AlarmSchedulerService.handleDismissed(alarmId);
+    debugPrint('Handled dismissed alarm $alarmId in background');
   } catch (e) {
-    debugPrint('Failed to reschedule alarm $alarmId in background: $e');
+    debugPrint('Failed to handle dismissed alarm $alarmId in background: $e');
   }
 }
