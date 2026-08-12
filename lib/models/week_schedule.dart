@@ -15,6 +15,14 @@ enum WeekType {
   double,
 }
 
+/// Bounds-safe enum deserialization. Corrupt DB rows must not crash the app.
+WeekType _safeWeekType(int? index) {
+  if (index == null || index < 0 || index >= WeekType.values.length) {
+    return WeekType.double;
+  }
+  return WeekType.values[index];
+}
+
 class WeekSchedule {
   final int? id;
   final int weekIndex; // Absolute week number from epoch (primary key for logic)
@@ -55,7 +63,7 @@ class WeekSchedule {
       year: map['year'] as int,
       month: map['month'] as int,
       weekOfMonth: map['weekOfMonth'] as int,
-      weekType: WeekType.values[map['weekType'] as int],
+      weekType: _safeWeekType(map['weekType'] as int?),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
     );
   }

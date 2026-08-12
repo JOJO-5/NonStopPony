@@ -123,7 +123,11 @@ class AlarmInfo {
     final weekdaysStr = map['weekdays'] as String? ?? '';
     final weekdays = weekdaysStr.isEmpty
         ? <int>[]
-        : weekdaysStr.split(',').map((s) => int.parse(s)).toList();
+        : weekdaysStr
+            .split(',')
+            .where((s) => int.tryParse(s) != null)
+            .map((s) => int.parse(s))
+            .toList();
 
     return AlarmInfo(
       id: map['id'] as int?,
@@ -150,6 +154,7 @@ class AlarmInfo {
     RepeatType? repeatType,
     List<int>? weekdays,
     String? label,
+    bool clearLabel = false,
     bool? vibrate,
     int? snoozeMinutes,
     bool? isEnabled,
@@ -165,7 +170,7 @@ class AlarmInfo {
       minute: minute ?? this.minute,
       repeatType: repeatType ?? this.repeatType,
       weekdays: weekdays ?? List<int>.from(this.weekdays),
-      label: label ?? this.label,
+      label: clearLabel ? null : (label ?? this.label),
       vibrate: vibrate ?? this.vibrate,
       snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
       isEnabled: isEnabled ?? this.isEnabled,

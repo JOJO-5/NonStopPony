@@ -136,5 +136,21 @@ void main() {
 
       expect(original.hour, 8);
     });
+
+    test('copyWith 可以清空 label', () {
+      final alarm = AlarmInfo.create(id: 1, hour: 7, minute: 0, label: '起床');
+      expect(alarm.copyWith(clearLabel: true).label, isNull);
+    });
+  });
+
+  group('fromMap robustness', () {
+    test('fromMap 损坏 weekdays 字符串不崩溃', () {
+      final alarm = AlarmInfo.fromMap({
+        'id': 1, 'hour': 7, 'minute': 0, 'repeatType': 0,
+        'weekdays': '1,x,3', 'vibrate': 1, 'snoozeMinutes': 5,
+        'isEnabled': 1, 'taskType': 0,
+      });
+      expect(alarm.weekdays, [1, 3]);
+    });
   });
 }

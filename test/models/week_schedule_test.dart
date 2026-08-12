@@ -110,6 +110,14 @@ void main() {
         final schedule = WeekSchedule.fromMap(map);
         expect(schedule.weekType, WeekType.double);
       });
+
+      test('fromMap 越界 weekType 回退 double 而非崩溃', () {
+        final ws = WeekSchedule.fromMap({
+          'id': 1, 'weekIndex': 1, 'year': 2026, 'month': 8, 'weekOfMonth': 1,
+          'weekType': 99, 'createdAt': 0,
+        });
+        expect(ws.weekType, WeekType.double);
+      });
     });
 
     group('equality', () {
