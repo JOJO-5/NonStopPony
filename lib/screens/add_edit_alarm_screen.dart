@@ -255,23 +255,29 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                     onChanged: (type) {
                       setState(() {
                         _repeatType = type;
-                        // Auto-set selectedDays based on dropdown choice
+                        // Auto-set selectedDays based on dropdown choice.
+                        // Each case ends with break to avoid fall-through.
                         switch (type) {
+                          case RepeatType.once:
+                            _selectedDays = [];
+                            break;
                           case RepeatType.daily:
                             _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+                            break;
                           case RepeatType.weekdays:
                             _selectedDays = [1, 2, 3, 4, 5];
+                            break;
+                          case RepeatType.weekends:
+                            _selectedDays = [6, 7];
+                            break;
                           case RepeatType.singleRest:
                             _selectedDays = [1, 2, 3, 4, 5, 6];
+                            break;
                           case RepeatType.doubleRest:
                             _selectedDays = [1, 2, 3, 4, 5];
+                            break;
                           case RepeatType.custom:
                             // Keep current selection for custom
-                            break;
-                          case RepeatType.once:
-                          case RepeatType.weekends:
-                            // These shouldn't appear in the dropdown,
-                            // but handle gracefully
                             break;
                         }
                       });
@@ -548,8 +554,8 @@ class _WeekTypeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Map legacy types to display types for the dropdown
-    // once/weekends are hidden from the menu — map them to closest visible type
+    // Map legacy types to display types for the dropdown.
+    // All RepeatType values are now represented in the menu, so each maps to itself.
     final displayValue = _toDisplayType(value);
 
     return Container(
@@ -566,8 +572,10 @@ class _WeekTypeDropdown extends StatelessWidget {
           icon: const Icon(Icons.expand_more_rounded, color: kBrandTextSecondary),
           style: const TextStyle(fontSize: 14, color: kBrandTextPrimary),
           items: const [
+            DropdownMenuItem(value: RepeatType.once, child: Text('一次性 · 响铃一次')),
             DropdownMenuItem(value: RepeatType.daily, child: Text('每天 · 周一至周日')),
             DropdownMenuItem(value: RepeatType.weekdays, child: Text('工作日 · 周一至周五')),
+            DropdownMenuItem(value: RepeatType.weekends, child: Text('周末 · 周六日')),
             DropdownMenuItem(value: RepeatType.singleRest, child: Text('单双休 · 单周休一天')),
             DropdownMenuItem(value: RepeatType.doubleRest, child: Text('仅双休 · 周末全休')),
             DropdownMenuItem(value: RepeatType.custom, child: Text('自定义 · 手动选择')),
@@ -581,17 +589,8 @@ class _WeekTypeDropdown extends StatelessWidget {
   }
 
   /// Map any RepeatType to a value that exists in the dropdown menu.
-  /// Hidden types (once, weekends) are mapped to their closest visible equivalent.
-  static RepeatType _toDisplayType(RepeatType type) {
-    switch (type) {
-      case RepeatType.once:
-        return RepeatType.daily; // "once" (ring every day) maps to "每天"
-      case RepeatType.weekends:
-        return RepeatType.custom; // "weekends" maps to custom
-      default:
-        return type;
-    }
-  }
+  /// All types are now represented in the menu, so this is the identity map.
+  static RepeatType _toDisplayType(RepeatType type) => type;
 }
 // ── Task type chip ─────────────────────────────────────────────
 class _TaskTypeChip extends StatelessWidget {
