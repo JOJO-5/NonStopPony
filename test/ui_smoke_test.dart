@@ -7,7 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:alarm_clock/app.dart';
+import 'package:alarm_clock/providers/alarm_provider.dart';
 import 'package:alarm_clock/providers/schedule_provider.dart';
+import 'package:alarm_clock/screens/add_edit_alarm_screen.dart';
 import 'package:alarm_clock/services/alarm_storage_service.dart';
 import 'package:alarm_clock/widgets/alarm_tile.dart';
 import 'package:alarm_clock/models/alarm_info.dart';
@@ -75,6 +77,25 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await pumpTile(tester, alarmOf(RepeatType.once, enabled: false));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('add/edit screen renders with 一次性 default repeat', (tester) async {
+    tester.view.physicalSize = const Size(1200, 2700);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AlarmProvider(),
+        child: const MaterialApp(home: AddEditAlarmScreen()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Regression: a brand-new alarm must show the 一次性 option, not 每天.
+    expect(find.text('\u4e00\u6b21\u6027 \u00b7 \u54cd\u94c3\u4e00\u6b21'), findsOneWidget);
+    expect(find.text('\u4fdd\u5b58'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
