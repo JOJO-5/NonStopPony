@@ -18,7 +18,7 @@ class AnalogClockWidget extends StatefulWidget {
     super.key,
     this.size = 160,
     this.faceColor = Colors.white,
-    this.handColor = const Color(0xFF2C1810),
+    this.handColor = kBrandTextPrimary,
     this.accentColor = kBrandCopper,
   });
 
