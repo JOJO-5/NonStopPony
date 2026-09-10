@@ -142,15 +142,10 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            color: kBrandSurface,
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            border: Border.all(color: kBrandOutlineVariant, width: 0.5),
+            boxShadow: kShadowSoft,
           ),
           child: Row(
             children: [
@@ -319,9 +314,9 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
   ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: kBrandSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusXl)),
       ),
       builder: (sheetContext) {
         return _WeekTypeSheet(

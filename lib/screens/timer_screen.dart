@@ -282,20 +282,14 @@ class _StartButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 80,
-        height: 80,
+        width: 84,
+        height: 84,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: _kAccent,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x33D4794A),
-              blurRadius: 16,
-              offset: Offset(0, 4),
-            ),
-          ],
+          gradient: kCopperGradient,
+          boxShadow: kShadowGlow,
         ),
-        child: const Icon(Icons.play_arrow, size: 40, color: Colors.white),
+        child: const Icon(Icons.play_arrow_rounded, size: 42, color: Colors.white),
       ),
     );
   }

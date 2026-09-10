@@ -118,15 +118,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: kBrandSurface,
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          border: Border.all(color: kBrandOutlineVariant, width: 0.5),
+          boxShadow: kShadowSoft,
         ),
         child: Column(
           children: [

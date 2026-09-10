@@ -132,15 +132,10 @@ class _LapList extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: kBrandSurface,
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        border: Border.all(color: kBrandOutlineVariant, width: 0.5),
+        boxShadow: kShadowSoft,
       ),
       child: ListView.separated(
         controller: scrollController,
@@ -267,15 +262,13 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 80,
-      height: 80,
-      child: FloatingActionButton(
-        heroTag: 'start',
-        onPressed: onPressed,
-        backgroundColor: kBrandCopper,
-        child: const Icon(Icons.play_arrow, size: 36, color: Colors.white),
-      ),
+    return _RoundButton(
+      icon: Icons.play_arrow_rounded,
+      size: 84,
+      iconSize: 40,
+      gradient: kCopperGradient,
+      glow: true,
+      onTap: onPressed,
     );
   }
 }
@@ -297,28 +290,79 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCopper = backgroundColor == kBrandCopper;
+    final isPlain = backgroundColor == Colors.white;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 64,
-          height: 64,
-          child: FloatingActionButton(
-            heroTag: label,
-            onPressed: onPressed,
-            backgroundColor: backgroundColor,
-            child: Icon(icon, size: 28, color: foregroundColor),
-          ),
+        _RoundButton(
+          icon: icon,
+          size: 64,
+          iconSize: 28,
+          gradient: isCopper ? kCopperGradient : null,
+          color: isCopper ? null : backgroundColor,
+          foreground: foregroundColor,
+          outlined: isPlain,
+          glow: isCopper,
+          onTap: onPressed,
         ),
         const SizedBox(height: 6),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
-            color: foregroundColor.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w500,
+            color: kBrandTextSecondary,
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Shared circular action button — gradient primary or flat secondary,
+/// with a soft warm shadow. Replaces the old FloatingActionButton hack.
+class _RoundButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  final double iconSize;
+  final LinearGradient? gradient;
+  final Color? color;
+  final Color foreground;
+  final bool outlined;
+  final bool glow;
+
+  const _RoundButton({
+    required this.icon,
+    required this.onTap,
+    this.size = 64,
+    this.iconSize = 28,
+    this.gradient,
+    this.color,
+    this.foreground = Colors.white,
+    this.outlined = false,
+    this.glow = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: gradient,
+          color: gradient == null ? (outlined ? kBrandSurface : color) : null,
+          border: outlined
+              ? Border.all(color: kBrandCopper.withValues(alpha: 0.5), width: 1.5)
+              : null,
+          boxShadow: glow ? kShadowGlow : kShadowSoft,
+        ),
+        child: Icon(icon, size: iconSize, color: foreground),
+      ),
     );
   }
 }
