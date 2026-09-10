@@ -260,6 +260,7 @@ class _StoryCard extends StatelessWidget {
         color: kBrandSurface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         border: Border.all(color: kBrandOutlineVariant, width: 0.5),
+        boxShadow: kShadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

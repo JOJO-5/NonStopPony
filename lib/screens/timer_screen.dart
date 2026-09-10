@@ -8,10 +8,11 @@ import '../providers/timer_provider.dart';
 import '../widgets/timer_picker.dart';
 import '../widgets/timer_presets.dart';
 import 'timer_fullscreen_screen.dart';
+import '../app.dart';
 
-const Color _kAccent = Color(0xFFE8936A);
-const Color _kBg = Color(0xFFFDF8F3);
-const Color _kText = Color(0xFF3D2C2C);
+const Color _kAccent = kBrandCopper;
+const Color _kBg = kBrandWarmBg;
+const Color _kText = kBrandTextPrimary;
 
 class TimerScreen extends StatefulWidget {
   const TimerScreen({super.key});
@@ -124,7 +125,7 @@ class _TimerScreenState extends State<TimerScreen>
           child: CustomPaint(
             painter: _ProgressRingPainter(
               progress: provider.progress,
-              trackColor: const Color(0xFFF0EDE8),
+              trackColor: kBrandSurfaceAlt,
               progressColor: _kAccent,
             ),
             child: Center(
@@ -207,7 +208,7 @@ class _TimerScreenState extends State<TimerScreen>
                 return CustomPaint(
                   painter: _ProgressRingPainter(
                     progress: 1.0,
-                    trackColor: const Color(0xFFF0EDE8),
+                    trackColor: kBrandSurfaceAlt,
                     progressColor: _kAccent,
                   ),
                   child: Center(
@@ -288,7 +289,7 @@ class _StartButton extends StatelessWidget {
           color: _kAccent,
           boxShadow: [
             BoxShadow(
-              color: Color(0x33E8936A),
+              color: Color(0x33D4794A),
               blurRadius: 16,
               offset: Offset(0, 4),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app.dart';
 
 /// Day-of-week labels in Chinese, indexed 1–7 (Mon–Sun).
 const Map<int, String> _kDayLabels = {
@@ -15,10 +16,10 @@ const List<int> _kAllDays = [1, 2, 3, 4, 5, 6, 7];
 const List<int> _kWorkdays = [1, 2, 3, 4, 5];
 const List<int> _kWeekend = [6, 7];
 
-const Color _kSelectedBg = Color(0xFFE8936A);
-const Color _kUnselectedBg = Color(0xFFF0EDE8);
+const Color _kSelectedBg = kBrandCopper;
+const Color _kUnselectedBg = kBrandSurfaceAlt;
 const Color _kSelectedText = Colors.white;
-const Color _kUnselectedText = Color(0xFF4A4A4A);
+const Color _kUnselectedText = kBrandTextSecondary;
 
 class RepeatPicker extends StatefulWidget {
   final List<int> selectedDays;

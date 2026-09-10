@@ -408,23 +408,37 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
 
             // ── Save button ─────────────────────────────────
             SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kBrandCopper,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: kBrandCopper.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
-                  elevation: 0,
+              height: 52,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: _saving ? null : kCopperGradient,
+                  color: _saving ? kBrandCopper.withValues(alpha: 0.5) : null,
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                  boxShadow: _saving ? const [] : kShadowGlow,
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('\u4fdd\u5b58', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _saving ? null : _save,
+                    borderRadius: BorderRadius.circular(kRadiusMd),
+                    child: Center(
+                      child: _saving
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(
+                              '\u4fdd\u5b58',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
               ),
             ),
 
@@ -519,6 +533,7 @@ class _SectionCard extends StatelessWidget {
         color: kBrandSurface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         border: Border.all(color: kBrandOutlineVariant, width: 0.5),
+        boxShadow: kShadowSoft,
       ),
       child: child,
     );

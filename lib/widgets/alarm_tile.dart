@@ -20,28 +20,19 @@ class AlarmTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isActive = alarm.isEnabled;
     final opacity = isActive ? 1.0 : 0.45;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: kSpace5, vertical: 5),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: kBrandSurface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         border: Border.all(
-          color: isActive
-              ? colorScheme.outlineVariant
-              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isActive ? kBrandOutlineVariant : kBrandOutlineVariant.withValues(alpha: 0.6),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: kBrandBrown.withValues(alpha: isActive ? 0.04 : 0.02),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isActive ? kShadowSoft : const [],
       ),
       child: Material(
         color: Colors.transparent,
@@ -50,13 +41,25 @@ class AlarmTile extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(kRadiusLg),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(kSpace5, kSpace4, kSpace3, kSpace4),
-            child: Opacity(
-              opacity: opacity,
-              child: Row(
-                children: [
-                  // ── Left: time + meta ────────────────────────
-                  Expanded(
+            padding: const EdgeInsets.fromLTRB(kSpace4, kSpace4, kSpace3, kSpace4),
+            child: Row(
+              children: [
+                // ── Accent bar ────────────────────────────────
+                Container(
+                  width: 4,
+                  height: 44,
+                  margin: const EdgeInsets.only(right: kSpace4),
+                  decoration: BoxDecoration(
+                    gradient: isActive ? kCopperGradient : null,
+                    color: isActive ? null : kBrandOutlineVariant,
+                    borderRadius: BorderRadius.circular(kRadiusPill),
+                  ),
+                ),
+
+                // ── Left: time + meta ────────────────────────
+                Expanded(
+                  child: Opacity(
+                    opacity: opacity,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -67,21 +70,17 @@ class AlarmTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                ),
 
-                  // ── Right: switch ─────────────────────────────
-                  Transform.scale(
-                    scale: 0.9,
-                    child: Switch(
-                      value: isActive,
-                      onChanged: (_) => onToggle(),
-                      activeThumbColor: kBrandCopper,
-                      activeTrackColor: kBrandCopper.withValues(alpha: 0.3),
-                      inactiveThumbColor: colorScheme.outline,
-                      inactiveTrackColor: colorScheme.outlineVariant.withValues(alpha: 0.4),
-                    ),
+                // ── Right: switch ─────────────────────────────
+                Transform.scale(
+                  scale: 0.9,
+                  child: Switch(
+                    value: isActive,
+                    onChanged: (_) => onToggle(),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -108,10 +107,11 @@ class _TimeDisplay extends StatelessWidget {
           '$h:$m',
           style: const TextStyle(
             fontSize: 40,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w500,
             color: kBrandTextPrimary,
-            height: 1.1,
-            letterSpacing: -1,
+            height: 1.05,
+            letterSpacing: -1.2,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
         if (alarm.label != null && alarm.label!.isNotEmpty) ...[

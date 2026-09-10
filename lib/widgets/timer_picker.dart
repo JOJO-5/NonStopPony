@@ -68,21 +68,15 @@ class _TimerPickerState extends State<TimerPicker> {
   @override
   Widget build(BuildContext context) {
     final bg = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF2A2A2A)
-        : Colors.white;
+        ? kBrandBrown
+        : kBrandSurface;
 
     return Container(
       height: 190,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kShadowSoft,
       ),
       child: Row(
         children: [

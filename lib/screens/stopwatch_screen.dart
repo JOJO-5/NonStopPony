@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/stopwatch_provider.dart';
+import '../app.dart';
 
 class StopwatchScreen extends StatefulWidget {
   const StopwatchScreen({super.key});
@@ -46,7 +47,7 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
         final bestIndex = provider.bestLapIndex;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFFDF8F3),
+          backgroundColor: kBrandWarmBg,
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -90,8 +91,8 @@ class _TimeDisplay extends StatelessWidget {
       style: const TextStyle(
         fontSize: 64,
         fontWeight: FontWeight.w700,
-        fontFamily: 'Courier',
-        color: Color(0xFF2D2D2D),
+        fontFeatures: [FontFeature.tabularFigures()],
+        color: kBrandTextPrimary,
         letterSpacing: 2,
       ),
     );
@@ -123,7 +124,7 @@ class _LapList extends StatelessWidget {
           isIdle ? '点击「开始」开始计时' : '计次记录将显示在这里',
           style: const TextStyle(
             fontSize: 14,
-            color: Color(0xFFAAAAAA),
+            color: kBrandTextSecondary,
           ),
         ),
       );
@@ -146,14 +147,14 @@ class _LapList extends StatelessWidget {
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: laps.length,
-        separatorBuilder: (_, i) => const Divider(height: 1, color: Color(0xFFF0EBE5)),
+        separatorBuilder: (_, i) => const Divider(height: 1, color: kBrandOutlineVariant),
         itemBuilder: (context, index) {
           final lap = laps[index];
           final isEven = index.isEven;
           final isBest = lap.index - 1 == bestLapIndex && laps.length > 1;
 
           return Container(
-            color: isEven ? Colors.white : const Color(0xFFFAF6F1),
+            color: isEven ? Colors.white : kBrandSurfaceAlt,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
@@ -163,7 +164,7 @@ class _LapList extends StatelessWidget {
                     '计次 ${lap.index}',
                     style: TextStyle(
                       fontSize: 14,
-                      color: isBest ? const Color(0xFFE8936A) : const Color(0xFF666666),
+                      color: isBest ? kBrandCopper : kBrandTextSecondary,
                       fontWeight: isBest ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
@@ -174,8 +175,8 @@ class _LapList extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      fontFamily: 'Courier',
-                      color: isBest ? const Color(0xFFE8936A) : const Color(0xFF2D2D2D),
+                      fontFeatures: [FontFeature.tabularFigures()],
+                      color: isBest ? kBrandCopper : kBrandTextPrimary,
                       fontWeight: isBest ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
@@ -187,8 +188,8 @@ class _LapList extends StatelessWidget {
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       fontSize: 13,
-                      fontFamily: 'Courier',
-                      color: Color(0xFF999999),
+                      fontFeatures: [FontFeature.tabularFigures()],
+                      color: kBrandTextSecondary,
                     ),
                   ),
                 ),
@@ -219,8 +220,8 @@ class _ControlButtons extends StatelessWidget {
             _CircleButton(
               label: '计次',
               icon: Icons.flag,
-              backgroundColor: const Color(0xFFE0DAD3),
-              foregroundColor: const Color(0xFF666666),
+              backgroundColor: kBrandOutline,
+              foregroundColor: kBrandTextSecondary,
               onPressed: () {
                 provider.lap();
                 onLap();
@@ -229,7 +230,7 @@ class _ControlButtons extends StatelessWidget {
             _CircleButton(
               label: '停止',
               icon: Icons.stop,
-              backgroundColor: const Color(0xFFE85C4A),
+              backgroundColor: kSemanticError,
               foregroundColor: Colors.white,
               onPressed: provider.pause,
             ),
@@ -242,15 +243,15 @@ class _ControlButtons extends StatelessWidget {
             _CircleButton(
               label: '继续',
               icon: Icons.play_arrow,
-              backgroundColor: const Color(0xFFE8936A),
+              backgroundColor: kBrandCopper,
               foregroundColor: Colors.white,
               onPressed: provider.start,
             ),
             _CircleButton(
               label: '重置',
               icon: Icons.refresh,
-              backgroundColor: const Color(0xFFE0DAD3),
-              foregroundColor: const Color(0xFF666666),
+              backgroundColor: kBrandOutline,
+              foregroundColor: kBrandTextSecondary,
               onPressed: provider.reset,
             ),
           ],
@@ -272,7 +273,7 @@ class _StartButton extends StatelessWidget {
       child: FloatingActionButton(
         heroTag: 'start',
         onPressed: onPressed,
-        backgroundColor: const Color(0xFFE8936A),
+        backgroundColor: kBrandCopper,
         child: const Icon(Icons.play_arrow, size: 36, color: Colors.white),
       ),
     );

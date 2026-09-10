@@ -4,6 +4,7 @@ import '../models/week_schedule.dart';
 import '../providers/schedule_provider.dart';
 import '../services/holiday_service.dart';
 import '../utils/date_utils.dart' as alarm_utils;
+import '../app.dart';
 
 /// Monthly calendar widget showing week rows with 单休/双休 type badges
 /// and holiday/workday markers.
@@ -30,8 +31,8 @@ class WeekScheduleCalendar extends StatefulWidget {
 }
 
 class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
-  static const _orange = Color(0xFFE8936A);
-  static const _green = Color(0xFF4CAF50);
+  static const _orange = kBrandCopper;
+  static const _green = kSemanticSuccess;
 
   /// Cached holiday info for the current month
   Map<String, HolidayInfo> _holidayMap = {};
@@ -103,7 +104,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
                     fontWeight: FontWeight.w500,
                     color: isWeekend
                         ? _orange.withValues(alpha: 0.7)
-                        : const Color(0xFF9E9E9E),
+                        : kBrandTextSecondary,
                   ),
                 ),
               ),
@@ -164,7 +165,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF3D2C2C),
+                        color: kBrandTextPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -194,7 +195,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
                             '(手动)',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF9E9E9E),
+                              color: kBrandTextSecondary,
                             ),
                           ),
                         ],
@@ -239,7 +240,7 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
     String? marker; // Small text like "休" or "班"
 
     if (!isCurrentMonth) {
-      textColor = const Color(0xFFE0E0E0);
+      textColor = kBrandOutlineVariant;
       marker = null;
     } else if (isHoliday) {
       // Statutory holiday — green background
@@ -252,13 +253,13 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
       textColor = _orange;
       marker = '班';
     } else if (isOff) {
-      textColor = const Color(0xFFBDBDBD);
+      textColor = kBrandOutline;
       marker = null;
     } else if (isWeekend && isCurrentMonth) {
       textColor = _orange;
       marker = null;
     } else {
-      textColor = const Color(0xFF3D2C2C);
+      textColor = kBrandTextPrimary;
       marker = null;
     }
 
@@ -394,8 +395,8 @@ class _WeekTypeSheet extends StatelessWidget {
     required this.provider,
   });
 
-  static const _orange = Color(0xFFE8936A);
-  static const _green = Color(0xFF4CAF50);
+  static const _orange = kBrandCopper;
+  static const _green = kSemanticSuccess;
 
   @override
   Widget build(BuildContext context) {
@@ -414,7 +415,7 @@ class _WeekTypeSheet extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
+                color: kBrandOutlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -424,7 +425,7 @@ class _WeekTypeSheet extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF3D2C2C),
+              color: kBrandTextPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -432,7 +433,7 @@ class _WeekTypeSheet extends StatelessWidget {
             '自动类型：${alarm_utils.weekTypeLabel(autoType)}',
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF9E9E9E),
+              color: kBrandTextSecondary,
             ),
           ),
           const SizedBox(height: 4),
@@ -440,7 +441,7 @@ class _WeekTypeSheet extends StatelessWidget {
             '切换后，后续周将自动联动调整',
             style: TextStyle(
               fontSize: 12,
-              color: Color(0xFF5C8AE6),
+              color: kBrandCopperDeep,
             ),
           ),
           const SizedBox(height: 20),
@@ -484,7 +485,7 @@ class _WeekTypeSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.1) : const Color(0xFFF5F5F5),
+          color: isSelected ? color.withValues(alpha: 0.1) : kBrandSurfaceAlt,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
               ? Border.all(color: color, width: 1.5)
@@ -499,7 +500,7 @@ class _WeekTypeSheet extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: isSelected ? color : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? color : const Color(0xFFBDBDBD),
+                  color: isSelected ? color : kBrandOutline,
                   width: 1.5,
                 ),
               ),
@@ -513,14 +514,14 @@ class _WeekTypeSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? color : const Color(0xFF3D2C2C),
+                    color: isSelected ? color : kBrandTextPrimary,
                   ),
                 ),
                 Text(
                   subtitle,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF9E9E9E),
+                    color: kBrandTextSecondary,
                   ),
                 ),
               ],
@@ -537,18 +538,18 @@ class _WeekTypeSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: kBrandSurfaceAlt,
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Row(
           children: [
-            Icon(Icons.restore, size: 18, color: Color(0xFF9E9E9E)),
+            Icon(Icons.restore, size: 18, color: kBrandTextSecondary),
             SizedBox(width: 12),
             Text(
               '恢复自动（后续周也会联动重算）',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF9E9E9E),
+                color: kBrandTextSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),

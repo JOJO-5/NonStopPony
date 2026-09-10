@@ -43,6 +43,47 @@ const kRadiusSm = 10.0;
 const kRadiusMd = 16.0;
 const kRadiusLg = 20.0;
 const kRadiusXl = 24.0;
+const kRadiusPill = 999.0;
+
+// ── Sunrise gradients — the warm identity of the product ──────────────────
+const kSunriseGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFFFCE6D2), Color(0xFFF5C39C)],
+);
+const kSunriseGradientSoft = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [Color(0xFFFFF4EA), kBrandWarmBg],
+);
+const kCopperGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFFE08A57), Color(0xFFC4632F)],
+);
+const kCopperGradientSoft = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFFFBE7D8), Color(0xFFF6D3B6)],
+);
+
+// ── Elevation — soft, warm-tinted shadows (never pure black) ──────────────
+const kShadowSoft = <BoxShadow>[
+  BoxShadow(color: Color(0x122D1B0E), blurRadius: 16, offset: Offset(0, 5)),
+];
+const kShadowRaised = <BoxShadow>[
+  BoxShadow(color: Color(0x1F2D1B0E), blurRadius: 26, offset: Offset(0, 10)),
+];
+const kShadowGlow = <BoxShadow>[
+  BoxShadow(color: Color(0x33D4794A), blurRadius: 24, offset: Offset(0, 8)),
+];
+
+// ── Motion — one rhythm across the whole app ──────────────────────────────
+const kMotionFast = Duration(milliseconds: 150);
+const kMotionBase = Duration(milliseconds: 240);
+const kMotionSlow = Duration(milliseconds: 380);
+const kCurveOut = Curves.easeOutCubic;
+const kCurveInOut = Curves.easeInOutCubic;
 
 class AlarmClockApp extends StatelessWidget {
   const AlarmClockApp({super.key});
@@ -166,6 +207,63 @@ class AlarmClockApp extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: kBrandBrown,
+          contentTextStyle: GoogleFonts.notoSansSc(fontSize: 14, color: Colors.white),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
+          elevation: 0,
+        ),
+        dividerTheme: const DividerThemeData(
+          color: kBrandOutlineVariant,
+          thickness: 1,
+          space: 1,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected) ? Colors.white : kBrandSurface),
+          trackColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? kBrandCopper
+                  : kBrandOutline.withValues(alpha: 0.45)),
+          trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: kBrandSurfaceAlt,
+          hintStyle: GoogleFonts.notoSansSc(fontSize: 15, color: kBrandOutline),
+          contentPadding: const EdgeInsets.symmetric(horizontal: kSpace4, vertical: kSpace3),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: kBrandCopper,
+            textStyle: GoogleFonts.notoSansSc(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: kBrandCopper,
+            side: const BorderSide(color: kBrandOutlineVariant),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
+            padding: const EdgeInsets.symmetric(horizontal: kSpace4, vertical: kSpace3),
+            textStyle: GoogleFonts.notoSansSc(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: kBrandSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+          titleTextStyle: GoogleFonts.notoSansSc(
+              fontSize: 18, fontWeight: FontWeight.w600, color: kBrandTextPrimary),
+          contentTextStyle: GoogleFonts.notoSansSc(fontSize: 14, color: kBrandTextSecondary),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: kBrandSurface,
+          surfaceTintColor: Colors.transparent,
         ),
       ),
       routes: {

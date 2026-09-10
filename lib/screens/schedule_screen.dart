@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/schedule_provider.dart';
 import '../widgets/week_schedule_calendar.dart';
+import '../app.dart';
 
 /// Schedule screen showing a monthly calendar with 单休/双休 week types.
 ///
@@ -22,9 +23,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late int _currentYear;
   late int _currentMonth;
 
-  static const _orange = Color(0xFFE8936A);
-  static const _green = Color(0xFF4CAF50);
-  static const _scaffoldBg = Color(0xFFFDF8F3);
+  static const _orange = kBrandCopper;
+  static const _green = kSemanticSuccess;
+  static const _scaffoldBg = kBrandWarmBg;
 
   @override
   void initState() {
@@ -89,7 +90,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           IconButton(
             onPressed: _goToPreviousMonth,
             icon: const Icon(Icons.chevron_left, size: 28),
-            color: const Color(0xFF3D2C2C),
+            color: kBrandTextPrimary,
           ),
           const SizedBox(width: 8),
           Text(
@@ -97,14 +98,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF3D2C2C),
+              color: kBrandTextPrimary,
             ),
           ),
           const SizedBox(width: 8),
           IconButton(
             onPressed: _goToNextMonth,
             icon: const Icon(Icons.chevron_right, size: 28),
-            color: const Color(0xFF3D2C2C),
+            color: kBrandTextPrimary,
           ),
         ],
       ),
@@ -137,7 +138,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               '点击周行可切换单休/双休类型',
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF9E9E9E),
+                color: kBrandTextSecondary,
               ),
             ),
           ],
@@ -163,7 +164,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Color(0xFF616161),
+            color: kBrandTextSecondary,
           ),
         ),
       ],

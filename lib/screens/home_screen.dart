@@ -42,21 +42,21 @@ class _HomeScreenState extends State<HomeScreen> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
+        decoration: const BoxDecoration(
+          color: kBrandSurface,
           boxShadow: [
             BoxShadow(
-              color: kBrandBrown.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -2),
+              color: Color(0x142D1B0E),
+              blurRadius: 20,
+              offset: Offset(0, -4),
             ),
           ],
         ),
         child: SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: kSpace1),
+            padding: const EdgeInsets.symmetric(vertical: kSpace2, horizontal: kSpace1),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(_tabs.length, (i) {
                 final tab = _tabs[i];
                 final isActive = i == _currentIndex;
@@ -96,26 +96,33 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: kSpace2),
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isActive ? activeColor : inactiveColor,
+            AnimatedContainer(
+              duration: kMotionBase,
+              curve: kCurveOut,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+              decoration: BoxDecoration(
+                gradient: isActive ? kCopperGradientSoft : null,
+                borderRadius: BorderRadius.circular(kRadiusPill),
+              ),
+              child: Icon(
+                icon,
+                size: 23,
+                color: isActive ? activeColor : inactiveColor,
+              ),
             ),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 color: isActive ? activeColor : inactiveColor,
               ),
             ),

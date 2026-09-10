@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../app.dart';
 
-const Color _kAccent = Color(0xFFE8936A);
+const Color _kAccent = kBrandCopper;
 
 class _Preset {
   final String label;

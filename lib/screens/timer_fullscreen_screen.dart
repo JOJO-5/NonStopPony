@@ -35,7 +35,7 @@ class _TimerFullScreenScreenState extends State<TimerFullScreenScreen>
   DateTime _now = DateTime.now();
 
   static const _bg = Color(0xFF120A06);
-  static const _accent = Color(0xFFE8936A);
+  static const _accent = kBrandCopper;
   static const _swipeThreshold = 120.0;
 
   @override

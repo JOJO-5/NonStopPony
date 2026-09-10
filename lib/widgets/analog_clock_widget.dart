@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../app.dart';
 
 /// An animated analog clock face that ticks every second.
 ///
@@ -18,7 +19,7 @@ class AnalogClockWidget extends StatefulWidget {
     this.size = 160,
     this.faceColor = Colors.white,
     this.handColor = const Color(0xFF2C1810),
-    this.accentColor = const Color(0xFFE8936A),
+    this.accentColor = kBrandCopper,
   });
 
   @override
@@ -160,3 +161,4 @@ class _ClockPainter extends CustomPainter {
   bool shouldRepaint(_ClockPainter old) =>
       old.now.second != now.second;
 }
+

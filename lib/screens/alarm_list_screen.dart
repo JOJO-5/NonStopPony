@@ -6,6 +6,8 @@ import '../models/alarm_info.dart';
 import '../services/alarm_notification_service.dart';
 import '../services/holiday_service.dart';
 import '../widgets/alarm_tile.dart';
+import '../providers/schedule_provider.dart';
+import '../models/week_schedule.dart';
 import '../app.dart';
 import 'add_edit_alarm_screen.dart';
 
@@ -64,6 +66,8 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     final now = DateTime.now();
     const weekDays = ['\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d', '\u65e5'];
     final dateStr = '${now.month}\u6708${now.day}\u65e5 \u661f\u671f${weekDays[now.weekday - 1]}';
+    final isSingleWeek =
+        context.watch<ScheduleProvider>().resolveWeekTypeByDate(now) == WeekType.single;
 
     return Scaffold(
       backgroundColor: kBrandWarmBg,
@@ -71,68 +75,77 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(kSpace6, kSpace4, kSpace6, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // ── Sunrise hero ────────────────────────────────────
+            Container(
+              margin: const EdgeInsets.fromLTRB(kSpace5, kSpace3, kSpace5, 0),
+              padding: const EdgeInsets.fromLTRB(kSpace5, kSpace5, kSpace5, kSpace4),
+              decoration: BoxDecoration(
+                gradient: kSunriseGradient,
+                borderRadius: BorderRadius.circular(kRadiusXl),
+                boxShadow: kShadowSoft,
+              ),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            dateStr,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (_todayHoliday != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: _todayHoliday!.isHoliday
-                                    ? kSemanticSuccess.withValues(alpha: 0.15)
-                                    : kBrandCopper.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dateStr,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: kBrandCopperDeep,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
                               ),
-                              child: Text(
-                                _todayHoliday!.isHoliday
-                                    ? _todayHoliday!.name ?? '假期'
-                                    : _todayHoliday!.name ?? '补班',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: _todayHoliday!.isHoliday ? kSemanticSuccess : kBrandCopper,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '\u6218\u9a6c\u95f9\u949f',
+                              style: TextStyle(
+                                fontSize: 27,
+                                fontWeight: FontWeight.w700,
+                                color: kBrandTextPrimary,
+                                letterSpacing: -0.5,
+                                height: 1.1,
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '\u6218\u9a6c\u95f9\u949f',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
-                          letterSpacing: -0.5,
                         ),
                       ),
+                      const _BrandBadge(),
                     ],
                   ),
-                  _BrandBadge(colorScheme: colorScheme),
+                  const SizedBox(height: kSpace4),
+                  Row(
+                    children: [
+                      _HeroPill(
+                        icon: isSingleWeek ? Icons.wb_twilight_rounded : Icons.weekend_rounded,
+                        text: isSingleWeek ? '本周单休' : '本周双休',
+                        color: isSingleWeek ? kBrandCopperDeep : kSemanticSuccess,
+                      ),
+                      if (_todayHoliday != null) ...[
+                        const SizedBox(width: kSpace2),
+                        _HeroPill(
+                          icon: _todayHoliday!.isHoliday
+                              ? Icons.beach_access_rounded
+                              : Icons.work_rounded,
+                          text: _todayHoliday!.name ??
+                              (_todayHoliday!.isHoliday ? '假期' : '补班'),
+                          color: _todayHoliday!.isHoliday ? kSemanticSuccess : kBrandCopperDeep,
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: kSpace6),
+            const SizedBox(height: kSpace5),
 
             // ── Alarm List ──────────────────────────────────────
             Expanded(
@@ -229,29 +242,14 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
               ),
             ),
 
-            // ── FAB bar at bottom ───────────────────────────────
+            // ── Primary CTA at bottom ───────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(kSpace5, 0, kSpace5, kSpace3),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _navigateToAdd,
-                  icon: const Icon(Icons.add_rounded, size: 22),
-                  label: const Text('\u6dfb\u52a0\u95f9\u949f'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kBrandCopper,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusMd),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+              child: _GradientButton(
+                label: '\u6dfb\u52a0\u95f9\u949f',
+                icon: Icons.add_rounded,
+                onTap: _navigateToAdd,
+                expanded: true,
               ),
             ),
           ],
@@ -261,22 +259,108 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
   }
 }
 
-// ── Brand badge (top-right) ────────────────────────────────────────────────
+// ── Brand badge (hero, top-right) ──────────────────────────────────────────
 
 class _BrandBadge extends StatelessWidget {
-  final ColorScheme colorScheme;
-  const _BrandBadge({required this.colorScheme});
+  const _BrandBadge();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(kRadiusMd),
+        boxShadow: [
+          BoxShadow(
+            color: kBrandCopper.withValues(alpha: 0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
-      child: const Icon(Icons.alarm_on_rounded, color: kBrandCopper, size: 22),
+      child: const Icon(Icons.alarm_on_rounded, color: kBrandCopperDeep, size: 24),
+    );
+  }
+}
+
+// ── Hero pill (week type / holiday) ────────────────────────────────────────
+
+class _HeroPill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+  const _HeroPill({required this.icon, required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: kSpace3, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(kRadiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Gradient primary button ────────────────────────────────────────────────
+
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool expanded;
+
+  const _GradientButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.expanded = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: expanded ? double.infinity : null,
+        height: 52,
+        padding: expanded ? null : const EdgeInsets.symmetric(horizontal: kSpace6),
+        decoration: BoxDecoration(
+          gradient: kCopperGradient,
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          boxShadow: kShadowGlow,
+        ),
+        child: Row(
+          mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: kSpace2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -289,44 +373,42 @@ class _EmptyHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: kSpace10),
+        padding: const EdgeInsets.symmetric(horizontal: kSpace8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(kRadiusXl),
+              width: 132,
+              height: 132,
+              decoration: const BoxDecoration(
+                gradient: kSunriseGradient,
+                shape: BoxShape.circle,
+                boxShadow: kShadowRaised,
               ),
-              child: const Icon(Icons.alarm_add_rounded, color: kBrandCopper, size: 44),
+              child: const Icon(Icons.alarm_add_rounded, color: Colors.white, size: 56),
             ),
             const SizedBox(height: kSpace6),
-            Text(
+            const Text(
               '\u8fd8\u6ca1\u6709\u95f9\u949f',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+                fontSize: 21,
+                fontWeight: FontWeight.w700,
+                color: kBrandTextPrimary,
               ),
             ),
             const SizedBox(height: kSpace2),
-            Text(
+            const Text(
               '\u6dfb\u52a0\u7b2c\u4e00\u4e2a\u95f9\u949f\uff0c\u8ba9\u6218\u9a6c\u53eb\u4f60\u8d77\u5e8a',
-              style: TextStyle(
-                fontSize: 14,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: kBrandTextSecondary),
             ),
             const SizedBox(height: kSpace6),
-            ElevatedButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('\u6dfb\u52a0\u95f9\u949f'),
+            _GradientButton(
+              label: '\u6dfb\u52a0\u95f9\u949f',
+              icon: Icons.add_rounded,
+              onTap: onAdd,
             ),
           ],
         ),
