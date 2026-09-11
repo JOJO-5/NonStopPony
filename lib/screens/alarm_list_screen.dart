@@ -18,12 +18,14 @@ class AlarmListScreen extends StatefulWidget {
   State<AlarmListScreen> createState() => _AlarmListScreenState();
 }
 
-class _AlarmListScreenState extends State<AlarmListScreen> {
+class _AlarmListScreenState extends State<AlarmListScreen>
+    with WidgetsBindingObserver {
   HolidayInfo? _todayHoliday;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AlarmProvider>().loadAlarms();
       _loadTodayHoliday();
@@ -31,6 +33,23 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AlarmNotificationService().requestAndroidPermissions();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// An alarm can be dismissed while the app is backgrounded (native ringing
+  /// notification), which changes the database without touching the in-memory
+  /// list. Reload on resume so the switches always match the stored state.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<AlarmProvider>().loadAlarms();
+      _loadTodayHoliday();
+    }
   }
 
   Future<void> _loadTodayHoliday() async {

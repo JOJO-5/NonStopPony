@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:alarm_clock/models/alarm_info.dart';
 import 'package:alarm_clock/models/week_schedule.dart';
 import 'package:alarm_clock/services/alarm_scheduler_service.dart';
+import 'package:alarm_clock/services/alarm_storage_service.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 
@@ -349,6 +353,71 @@ void main() {
         // If result is Saturday, it passed the weekdays check
         // If not Saturday, it's because there's no Saturday in the next 365 days
         // (which would be a test environment issue, not a logic issue)
+      });
+    });
+
+    group('handleDismissed', () {
+      // Regression: dismissing must leave the database in the state the UI
+      // shows. A one-shot alarm has to be disabled (it never fires again),
+      // while a repeating alarm must stay enabled and get its next occurrence
+      // scheduled. Both the full-screen dismiss and the native ringing
+      // notification now funnel through handleDismissed().
+      //
+      // Declared last: it owns the SQLite database, and closing it here would
+      // otherwise make the holiday lookups of later tests fail.
+      late Directory tempDir;
+
+      setUp(() async {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+        tempDir = await Directory.systemTemp.createTemp('dismiss_test');
+        await AlarmStorageService.init(databasePath: tempDir.path);
+      });
+
+      tearDown(() async {
+        await AlarmStorageService.close();
+        final dbFile = File('${tempDir.path}/alarm_clock.db');
+        if (await dbFile.exists()) {
+          await dbFile.delete();
+        }
+      });
+
+      test('once alarm is disabled after dismiss', () async {
+        final id = await AlarmStorageService.insert(AlarmInfo(
+          hour: 7,
+          minute: 0,
+          repeatType: RepeatType.once,
+          weekdays: const [],
+          vibrate: true,
+          snoozeMinutes: 5,
+          isEnabled: true,
+        ));
+
+        await AlarmSchedulerService.handleDismissed(id);
+
+        final after = await AlarmStorageService.getById(id);
+        expect(after, isNotNull);
+        expect(after!.isEnabled, isFalse,
+            reason: '一次性闹钟响过之后必须自动停用，否则列表会一直显示为开启');
+      });
+
+      test('repeating alarm stays enabled after dismiss', () async {
+        final id = await AlarmStorageService.insert(AlarmInfo(
+          hour: 7,
+          minute: 0,
+          repeatType: RepeatType.daily,
+          weekdays: const [],
+          vibrate: true,
+          snoozeMinutes: 5,
+          isEnabled: true,
+        ));
+
+        await AlarmSchedulerService.handleDismissed(id);
+
+        final after = await AlarmStorageService.getById(id);
+        expect(after, isNotNull);
+        expect(after!.isEnabled, isTrue,
+            reason: '重复闹钟关闭后应保持启用并重排下一次');
       });
     });
   });

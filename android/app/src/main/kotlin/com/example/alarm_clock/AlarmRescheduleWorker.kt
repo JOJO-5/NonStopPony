@@ -1,26 +1,41 @@
 package com.example.alarm_clock
 
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor
-import io.flutter.embedding.engine.loader.FlutterLoader
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugins.GeneratedPluginRegistrant
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
- * WorkManager Worker that reschedules all enabled alarms after device reboot
- * or app update.
+ * WorkManager worker that runs the Dart-side alarm bookkeeping without the UI:
+ * a full reschedule after boot/update, or the dismissal bookkeeping for a
+ * single alarm (disable a one-shot alarm / schedule the next occurrence).
  *
- * Spins up a background FlutterEngine (no UI) to invoke the Dart-side
- * reschedule logic via MethodChannel, then tears the engine down.
- *
- * Uses a callback-based approach instead of fixed Thread.sleep to wait for
- * the Dart isolate to be ready. Falls back to a maximum timeout if the
- * callback is never received.
+ * Implementation notes (these were bugs before):
+ * - `FlutterLoader.startInitialization` / `ensureInitializationComplete` are
+ *   main-thread only. `doWork()` runs on a WorkManager background thread, so
+ *   calling them by hand threw and the worker returned [Result.retry] forever
+ *   (visible as a retry roughly every minute). `FlutterEngine` already performs
+ *   loader initialization, so we simply build the engine on the main thread.
+ * - A headless engine does not inherit the activity's plugin registration, so
+ *   plugins (sqflite, notifications, ...) and the app's own AlarmManager
+ *   channel are registered explicitly.
+ * - Instead of sleeping a fixed 3 s and hoping the Dart isolate is ready, the
+ *   invocation is retried until the Dart handler answers.
+ * - Failures return [Result.failure] rather than [Result.retry]: rescheduling
+ *   also happens on every app launch and via [BootReceiver]'s native path, so
+ *   an endless retry loop only wastes battery and spams logcat.
  */
 class AlarmRescheduleWorker(
     private val context: Context,
@@ -30,74 +45,119 @@ class AlarmRescheduleWorker(
     companion object {
         private const val TAG = "AlarmRescheduleWorker"
         private const val CHANNEL = "com.example.alarm_clock/boot_receiver"
-        private const val MAX_WAIT_MILLIS = 15000L  // Maximum total wait time
+        private const val KEY_DISMISSED_ALARM_ID = "dismissedAlarmId"
+        private const val MAX_WAIT_MILLIS = 20_000L
+        private const val INVOKE_RETRY_MILLIS = 300L
+        private const val MAX_INVOKE_ATTEMPTS = 40
+
+        /**
+         * Input data for a run that also performs dismissal bookkeeping for
+         * [dismissedAlarmId]. Pass -1 for a plain "reschedule everything" run.
+         */
+        fun inputDataFor(dismissedAlarmId: Int) =
+            workDataOf(KEY_DISMISSED_ALARM_ID to dismissedAlarmId)
     }
 
     override fun doWork(): Result {
-        Log.d(TAG, "Starting alarm reschedule after boot/update")
-        return try {
-            @Suppress("DEPRECATION")
-            val loader = FlutterLoader()
-            loader.startInitialization(context)
-            loader.ensureInitializationComplete(context, null)
+        val dismissedAlarmId = inputData.getInt(KEY_DISMISSED_ALARM_ID, -1)
+        Log.d(TAG, "Reschedule worker started (dismissedAlarmId=$dismissedAlarmId)")
 
-            val engine = FlutterEngine(context)
-            val handler = Handler(Looper.getMainLooper())
-            val callbackReceived = BooleanArray(1)
-            val lock = Object()
+        val finished = CountDownLatch(1)
+        val succeeded = AtomicBoolean(false)
+        val engineRef = AtomicReference<FlutterEngine?>(null)
+        val mainHandler = Handler(Looper.getMainLooper())
 
-            // Set up a MethodChannel handler so the Dart side can signal when
-            // it has finished rescheduling alarms.
-            MethodChannel(
-                engine.dartExecutor.binaryMessenger,
-                CHANNEL
-            ).setMethodCallHandler { call, result ->
-                if (call.method == "rescheduleComplete") {
-                    synchronized(lock) {
-                        callbackReceived[0] = true
-                        lock.notifyAll()
+        mainHandler.post {
+            try {
+                val engine = FlutterEngine(context)
+                engineRef.set(engine)
+
+                // Headless engines are not covered by MainActivity's
+                // configureFlutterEngine, so register plugins + the custom
+                // AlarmManager channel this run depends on.
+                GeneratedPluginRegistrant.registerWith(engine)
+                AlarmScheduler.register(engine, context)
+
+                val channel = MethodChannel(engine.dartExecutor.binaryMessenger, CHANNEL)
+                channel.setMethodCallHandler { call, result ->
+                    if (call.method == "rescheduleComplete") {
+                        succeeded.set(true)
+                        finished.countDown()
                     }
                     result.success(null)
-                } else if (call.method == "rescheduleAlarms") {
-                    // Dart side acknowledges reschedule request
-                    result.success(null)
-                } else {
-                    result.notImplemented()
                 }
-            }
 
-            engine.dartExecutor.executeDartEntrypoint(
-                DartExecutor.DartEntrypoint.createDefault()
-            )
+                engine.dartExecutor.executeDartEntrypoint(
+                    DartExecutor.DartEntrypoint.createDefault()
+                )
 
-            // Give the Dart isolate a moment to initialize before invoking the channel.
-            Thread.sleep(3000)
-
-            MethodChannel(
-                engine.dartExecutor.binaryMessenger,
-                CHANNEL
-            ).invokeMethod("rescheduleAlarms", null)
-
-            // Wait for the Dart side to call back "rescheduleComplete",
-            // with a maximum timeout so we don't block forever.
-            synchronized(lock) {
-                val deadline = System.currentTimeMillis() + MAX_WAIT_MILLIS
-                while (!callbackReceived[0]) {
-                    val remaining = deadline - System.currentTimeMillis()
-                    if (remaining <= 0) {
-                        Log.w(TAG, "Timed out waiting for rescheduleComplete callback")
-                        break
+                var attempt = 0
+                fun invokeReschedule() {
+                    if (finished.count == 0L) return
+                    if (attempt++ >= MAX_INVOKE_ATTEMPTS) {
+                        Log.w(TAG, "Dart handler never became ready — giving up")
+                        finished.countDown()
+                        return
                     }
-                    lock.wait(remaining)
-                }
-            }
+                    channel.invokeMethod(
+                        "rescheduleAlarms",
+                        mapOf("dismissedAlarmId" to dismissedAlarmId),
+                        object : MethodChannel.Result {
+                            override fun success(result: Any?) = Unit
+                            override fun error(code: String, message: String?, details: Any?) {
+                                mainHandler.postDelayed({ invokeReschedule() }, INVOKE_RETRY_MILLIS)
+                            }
 
-            engine.destroy()
-            Log.d(TAG, "Alarm reschedule work completed (callbackReceived=${callbackReceived[0]})")
+                            override fun notImplemented() {
+                                mainHandler.postDelayed({ invokeReschedule() }, INVOKE_RETRY_MILLIS)
+                            }
+                        }
+                    )
+                }
+                invokeReschedule()
+            } catch (e: Exception) {
+                Log.e(TAG, "Reschedule worker could not start the Flutter engine", e)
+                finished.countDown()
+            }
+        }
+
+        val completed = finished.await(MAX_WAIT_MILLIS, TimeUnit.MILLISECONDS)
+        mainHandler.post { engineRef.get()?.destroy() }
+
+        return if (succeeded.get()) {
+            Log.d(TAG, "Reschedule completed (dismissedAlarmId=$dismissedAlarmId)")
+            if (dismissedAlarmId >= 0) {
+                notifyDismissed(dismissedAlarmId)
+            }
             Result.success()
+        } else {
+            Log.w(
+                TAG,
+                "Reschedule did not confirm completion (awaitCompleted=$completed) — " +
+                    "alarms stay scheduled via the native path and the next app launch"
+            )
+            Result.failure()
+        }
+    }
+
+    /**
+     * Tells a live app instance that [alarmId] was dismissed so its alarm list
+     * can refresh. Sent from here — after the database write has landed —
+     * rather than when the notification is tapped, otherwise the UI would
+     * reload the state from before the dismissal.
+     *
+     * Package-scoped, so it is a no-op when the app is not running.
+     */
+    private fun notifyDismissed(alarmId: Int) {
+        try {
+            val intent = Intent(AlarmRingingService.ACTION_ALARM_DISMISSED).apply {
+                setPackage(context.packageName)
+                putExtra("alarmId", alarmId)
+            }
+            context.sendBroadcast(intent)
+            Log.d(TAG, "Broadcast alarm $alarmId dismissal for UI refresh")
         } catch (e: Exception) {
-            Log.e(TAG, "Reschedule failed", e)
-            Result.retry()
+            Log.e(TAG, "Failed to broadcast alarm dismissal", e)
         }
     }
 }

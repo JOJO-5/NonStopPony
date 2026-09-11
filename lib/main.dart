@@ -13,6 +13,7 @@ import 'providers/stopwatch_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'services/alarm_storage_service.dart';
 import 'services/alarm_notification_service.dart';
+import 'services/alarm_scheduler_service.dart';
 import 'services/boot_receiver_service.dart';
 import 'services/holiday_service.dart';
 import 'screens/alarm_fullscreen_screen.dart';
@@ -206,13 +207,28 @@ void main() async {
   await AlarmNotificationService().requestIgnoreBatteryOptimizations();
 
   // Listen for MethodChannel reschedule requests from AlarmRescheduleWorker
-  // (triggered on boot via WorkManager — no startActivity needed).
+  // (triggered on boot / on dismiss via WorkManager — no startActivity needed).
   const bootChannel = MethodChannel('com.example.alarm_clock/boot_receiver');
   bootChannel.setMethodCallHandler((call) async {
     if (call.method == 'rescheduleAlarms') {
-      await BootReceiverService.rescheduleAlarmsAfterBoot();
-      // Signal the native AlarmRescheduleWorker so it doesn't wait the
-      // full 15s MAX_WAIT_MILLIS timeout.
+      final args = call.arguments;
+      final dismissedAlarmId =
+          args is Map ? args['dismissedAlarmId'] as int? : null;
+      if (dismissedAlarmId != null && dismissedAlarmId >= 0) {
+        // The alarm was dismissed from the native ringing notification. Run the
+        // same bookkeeping as the full-screen dismiss path so a one-shot alarm
+        // is disabled and a repeating one gets its next occurrence scheduled.
+        try {
+          await AlarmSchedulerService.handleDismissed(dismissedAlarmId);
+          debugPrint('Handled dismissed alarm $dismissedAlarmId from native');
+        } catch (e) {
+          debugPrint('Failed to handle dismissed alarm $dismissedAlarmId: $e');
+        }
+      } else {
+        await BootReceiverService.rescheduleAlarmsAfterBoot();
+      }
+      // Signal the native AlarmRescheduleWorker so it doesn't wait out its
+      // full MAX_WAIT_MILLIS timeout.
       await bootChannel.invokeMethod('rescheduleComplete');
     }
   });
@@ -232,6 +248,20 @@ void main() async {
         final label = call.arguments['title'] as String? ?? '战马闹钟';
         debugPrint('Received alarm fire from native: alarmId=$alarmId, label=$label');
         _navigateToAlarmScreen(alarmId, label);
+      } else if (call.method == 'onAlarmDismissed') {
+        // The alarm was dismissed from the native ringing notification. That
+        // bookkeeping runs in a background isolate, so this (live) isolate has
+        // a stale alarm list — reload it so the switches match the database.
+        final alarmId = call.arguments['alarmId'] as int? ?? -1;
+        debugPrint('Alarm $alarmId dismissed from native — refreshing alarm list');
+        final ctx = alarmNavigatorKey.currentContext;
+        if (ctx != null) {
+          try {
+            await ctx.read<AlarmProvider>().loadAlarms();
+          } catch (e) {
+            debugPrint('Failed to refresh alarm list after native dismiss: $e');
+          }
+        }
       }
     });
 

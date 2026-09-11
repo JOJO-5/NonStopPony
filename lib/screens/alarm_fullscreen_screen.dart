@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../widgets/analog_clock_widget.dart';
 import '../widgets/tasks/math_challenge.dart';
+import '../providers/alarm_provider.dart';
 import '../services/alarm_notification_service.dart';
 import '../services/alarm_scheduler_service.dart';
 import '../services/alarm_storage_service.dart';
@@ -113,6 +115,17 @@ class _AlarmFullScreenScreenState extends State<AlarmFullScreenScreen>
       debugPrint('Handled dismissed alarm ${widget.alarmId}');
     } catch (e) {
       debugPrint('Failed to handle dismissed alarm after dismiss: $e');
+    }
+
+    // handleDismissed() only writes the database, so refresh the in-memory list
+    // here — otherwise the list screen keeps showing a stale "enabled" switch
+    // until the next app launch.
+    if (mounted) {
+      try {
+        await context.read<AlarmProvider>().loadAlarms();
+      } catch (e) {
+        debugPrint('Failed to refresh alarm list after dismiss: $e');
+      }
     }
 
     if (mounted) Navigator.of(context, rootNavigator: true).pop();

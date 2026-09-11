@@ -1,10 +1,14 @@
 package com.example.alarm_clock
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -27,6 +31,24 @@ class MainActivity : FlutterActivity() {
 
     private var ringtoneResult: MethodChannel.Result? = null
     private var previewPlayer: MediaPlayer? = null
+
+    /**
+     * Refreshes the Dart-side alarm list after a notification-initiated dismiss.
+     * That dismissal runs in a background worker isolate, so the running UI has
+     * to be told explicitly that the stored state changed.
+     */
+    private val alarmDismissedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != AlarmRingingService.ACTION_ALARM_DISMISSED) return
+            val alarmId = intent.getIntExtra("alarmId", -1)
+            val engine = flutterEngine ?: return
+            Log.d(TAG, "Alarm $alarmId dismissed from notification — refreshing alarm list")
+            MethodChannel(
+                engine.dartExecutor.binaryMessenger,
+                "com.example.alarm_clock/alarm_fire"
+            ).invokeMethod("onAlarmDismissed", mapOf("alarmId" to alarmId))
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -209,6 +231,22 @@ class MainActivity : FlutterActivity() {
         checkAlarmLaunch(intent)
         // Check if launched from timer notification or full-screen intent
         checkTimerLaunch(intent)
+        registerAlarmDismissedReceiver()
+    }
+
+    /**
+     * Listens for the package-scoped dismissal broadcast sent by
+     * [AlarmRingingService] so the alarm list can be refreshed while the app is
+     * alive (the dismissal itself runs in a background isolate).
+     */
+    private fun registerAlarmDismissedReceiver() {
+        val filter = IntentFilter(AlarmRingingService.ACTION_ALARM_DISMISSED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(alarmDismissedReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(alarmDismissedReceiver, filter)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -449,6 +487,11 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        try {
+            unregisterReceiver(alarmDismissedReceiver)
+        } catch (_: Exception) {
+            // Not registered (e.g. creation failed) — nothing to clean up.
+        }
         stopPreview()
         super.onDestroy()
     }

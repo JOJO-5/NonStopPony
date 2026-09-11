@@ -40,6 +40,13 @@ class AlarmRingingService : Service() {
         const val ACTION_START = "com.example.alarm_clock.ACTION_START_ALARM"
         const val ACTION_STOP = "com.example.alarm_clock.ACTION_STOP_ALARM"
 
+        /**
+         * Package-scoped broadcast emitted after a notification-initiated stop
+         * so a live app instance can refresh its alarm list. It is a no-op when
+         * the app is not running.
+         */
+        const val ACTION_ALARM_DISMISSED = "com.example.alarm_clock.ALARM_DISMISSED"
+
         private var mediaPlayer: MediaPlayer? = null
         private var vibrator: Vibrator? = null
         private val vibrationHandler = Handler(Looper.getMainLooper())
@@ -130,12 +137,18 @@ class AlarmRingingService : Service() {
         Log.d(TAG, "onStartCommand: action=${intent?.action}, alarmId=${intent?.getIntExtra("alarmId", -1)}")
         when (intent?.action) {
             ACTION_STOP -> {
+                // Capture the alarm id before stopRinging() resets it: the
+                // notification STOP action must hand the id to Dart so a
+                // one-shot alarm gets disabled (and repeating alarms get
+                // rescheduled) exactly like the full-screen dismiss path.
+                val dismissedAlarmId = intent.getIntExtra("alarmId", currentAlarmId)
                 stopRinging()
-                // Notification STOP button path has no Flutter involvement:
-                // reschedule the next occurrence here so repeating alarms
-                // don't lose their schedule until the next app launch.
+                // A Dart-initiated stop already ran handleDismissed() itself.
                 if (intent.getBooleanExtra("fromFlutter", false) != true) {
-                    rescheduleNext()
+                    // The alarm list must be refreshed only AFTER the background
+                    // worker has written the new state, so the broadcast is sent
+                    // from AlarmRescheduleWorker on completion — not here.
+                    rescheduleNext(dismissedAlarmId)
                 }
                 return START_NOT_STICKY
             }
@@ -174,15 +187,21 @@ class AlarmRingingService : Service() {
     }
 
     /**
-     * Enqueues a one-shot AlarmRescheduleWorker. Rescheduling is idempotent
-     * (same alarmId replaces the PendingIntent), so double-enqueues with the
-     * Dart-side reschedule are harmless.
+     * Enqueues a one-shot [AlarmRescheduleWorker]. Rescheduling is idempotent
+     * (the same alarmId replaces its PendingIntent), so a double-enqueue with
+     * the Dart-side reschedule is harmless.
+     *
+     * [dismissedAlarmId] is forwarded to Dart so it runs the same dismissal
+     * bookkeeping as the full-screen path (disable a one-shot alarm, schedule
+     * the next occurrence of a repeating one). Pass -1 for a plain reschedule.
      */
-    private fun rescheduleNext() {
+    private fun rescheduleNext(dismissedAlarmId: Int = -1) {
         try {
-            val workRequest = androidx.work.OneTimeWorkRequestBuilder<AlarmRescheduleWorker>().build()
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<AlarmRescheduleWorker>()
+                .setInputData(AlarmRescheduleWorker.inputDataFor(dismissedAlarmId))
+                .build()
             androidx.work.WorkManager.getInstance(applicationContext).enqueue(workRequest)
-            Log.d(TAG, "Enqueued AlarmRescheduleWorker")
+            Log.d(TAG, "Enqueued AlarmRescheduleWorker (dismissedAlarmId=$dismissedAlarmId)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to enqueue reschedule work", e)
         }
@@ -389,9 +408,13 @@ class AlarmRingingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Intent to stop the alarm via notification action
+        // Intent to stop the alarm via notification action. The alarm id is
+        // carried along so the native STOP path can hand it to Dart for the
+        // dismissal bookkeeping — without it the service saw -1 and a one-shot
+        // alarm was never disabled.
         val stopIntent = Intent(this, AlarmRingingService::class.java).apply {
             action = ACTION_STOP
+            putExtra("alarmId", currentAlarmId)
         }
         val stopPendingIntent = PendingIntent.getService(
             this,
