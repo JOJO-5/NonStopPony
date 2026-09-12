@@ -19,6 +19,8 @@ const kBrandSurface = Color(0xFFFFFFFF);
 const kBrandSurfaceAlt = Color(0xFFF3EFEA);
 const kBrandTextPrimary = Color(0xFF2D1B0E);
 const kBrandTextSecondary = Color(0xFF8E7B6A);
+const kBrandTextMuted = Color(0xFF6B594B);
+const kBrandCopperAction = Color(0xFF9E4827);
 const kBrandOutline = Color(0xFFD4C8B8);
 const kBrandOutlineVariant = Color(0xFFEAE0D5);
 
@@ -59,7 +61,7 @@ const kSunriseGradientSoft = LinearGradient(
 const kCopperGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
-  colors: [Color(0xFFE08A57), Color(0xFFC4632F)],
+  colors: [Color(0xFFB65C30), Color(0xFF963F20)],
 );
 const kCopperGradientSoft = LinearGradient(
   begin: Alignment.topLeft,
@@ -127,43 +129,44 @@ class AlarmClockApp extends StatelessWidget {
       theme: baseTheme.copyWith(
         colorScheme: colorScheme,
         scaffoldBackgroundColor: kBrandWarmBg,
-        textTheme: GoogleFonts.notoSansScTextTheme(baseTheme.textTheme).copyWith(
-          headlineLarge: GoogleFonts.notoSansSc(
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            color: kBrandTextPrimary,
-          ),
-          headlineMedium: GoogleFonts.notoSansSc(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: kBrandTextPrimary,
-          ),
-          titleLarge: GoogleFonts.notoSansSc(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: kBrandTextPrimary,
-          ),
-          titleMedium: GoogleFonts.notoSansSc(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: kBrandTextPrimary,
-          ),
-          bodyLarge: GoogleFonts.notoSansSc(
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            color: kBrandTextPrimary,
-          ),
-          bodyMedium: GoogleFonts.notoSansSc(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: kBrandTextSecondary,
-          ),
-          bodySmall: GoogleFonts.notoSansSc(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-            color: kBrandTextSecondary,
-          ),
-        ),
+        textTheme: GoogleFonts.notoSansScTextTheme(baseTheme.textTheme)
+            .copyWith(
+              headlineLarge: GoogleFonts.notoSansSc(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: kBrandTextPrimary,
+              ),
+              headlineMedium: GoogleFonts.notoSansSc(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: kBrandTextPrimary,
+              ),
+              titleLarge: GoogleFonts.notoSansSc(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: kBrandTextPrimary,
+              ),
+              titleMedium: GoogleFonts.notoSansSc(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: kBrandTextPrimary,
+              ),
+              bodyLarge: GoogleFonts.notoSansSc(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: kBrandTextPrimary,
+              ),
+              bodyMedium: GoogleFonts.notoSansSc(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: kBrandTextSecondary,
+              ),
+              bodySmall: GoogleFonts.notoSansSc(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: kBrandTextSecondary,
+              ),
+            ),
         appBarTheme: AppBarTheme(
           backgroundColor: kBrandWarmBg,
           foregroundColor: kBrandTextPrimary,
@@ -185,17 +188,20 @@ class AlarmClockApp extends StatelessWidget {
           margin: EdgeInsets.zero,
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          selectedItemColor: kBrandCopper,
+          selectedItemColor: kBrandCopperAction,
           unselectedItemColor: const Color(0xFFB8A898),
           type: BottomNavigationBarType.fixed,
           backgroundColor: kBrandSurface,
           elevation: 1,
-          selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          selectedLabelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
           unselectedLabelStyle: const TextStyle(fontSize: 11),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: kBrandCopper,
+            backgroundColor: kBrandCopperAction,
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -211,8 +217,13 @@ class AlarmClockApp extends StatelessWidget {
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           backgroundColor: kBrandBrown,
-          contentTextStyle: GoogleFonts.notoSansSc(fontSize: 14, color: Colors.white),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
+          contentTextStyle: GoogleFonts.notoSansSc(
+            fontSize: 14,
+            color: Colors.white,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusMd),
+          ),
           elevation: 0,
         ),
         dividerTheme: const DividerThemeData(
@@ -221,19 +232,29 @@ class AlarmClockApp extends StatelessWidget {
           space: 1,
         ),
         switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected) ? Colors.white : kBrandSurface),
-          trackColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected)
-                  ? kBrandCopper
-                  : kBrandOutline.withValues(alpha: 0.45)),
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? Colors.white
+                : kBrandSurface,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? kBrandCopper
+                : kBrandOutline.withValues(alpha: 0.45),
+          ),
           trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: kBrandSurfaceAlt,
-          hintStyle: GoogleFonts.notoSansSc(fontSize: 15, color: kBrandOutline),
-          contentPadding: const EdgeInsets.symmetric(horizontal: kSpace4, vertical: kSpace3),
+          hintStyle: GoogleFonts.notoSansSc(
+            fontSize: 15,
+            color: kBrandTextMuted,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: kSpace4,
+            vertical: kSpace3,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(kRadiusMd),
             borderSide: BorderSide.none,
@@ -241,25 +262,44 @@ class AlarmClockApp extends StatelessWidget {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: kBrandCopper,
-            textStyle: GoogleFonts.notoSansSc(fontSize: 14, fontWeight: FontWeight.w600),
+            foregroundColor: kBrandCopperAction,
+            textStyle: GoogleFonts.notoSansSc(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: kBrandCopper,
+            foregroundColor: kBrandCopperAction,
             side: const BorderSide(color: kBrandOutlineVariant),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
-            padding: const EdgeInsets.symmetric(horizontal: kSpace4, vertical: kSpace3),
-            textStyle: GoogleFonts.notoSansSc(fontSize: 14, fontWeight: FontWeight.w600),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(kRadiusMd),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: kSpace4,
+              vertical: kSpace3,
+            ),
+            textStyle: GoogleFonts.notoSansSc(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         dialogTheme: DialogThemeData(
           backgroundColor: kBrandSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusXl),
+          ),
           titleTextStyle: GoogleFonts.notoSansSc(
-              fontSize: 18, fontWeight: FontWeight.w600, color: kBrandTextPrimary),
-          contentTextStyle: GoogleFonts.notoSansSc(fontSize: 14, color: kBrandTextSecondary),
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: kBrandTextPrimary,
+          ),
+          contentTextStyle: GoogleFonts.notoSansSc(
+            fontSize: 14,
+            color: kBrandTextSecondary,
+          ),
         ),
         bottomSheetTheme: const BottomSheetThemeData(
           backgroundColor: kBrandSurface,
@@ -268,8 +308,9 @@ class AlarmClockApp extends StatelessWidget {
       ),
       routes: {
         '/alarm_ringing': (ctx) {
-          final args = ModalRoute.of(ctx)!.settings.arguments
-              as Map<String, dynamic>? ?? {};
+          final args =
+              ModalRoute.of(ctx)!.settings.arguments as Map<String, dynamic>? ??
+              {};
           return AlarmFullScreenScreen(
             alarmId: (args['alarmId'] as int?) ?? -1,
             label: (args['label'] as String?) ?? '\u6218\u9a6c\u95f9\u949f',

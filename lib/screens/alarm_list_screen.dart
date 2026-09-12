@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +12,7 @@ import '../providers/schedule_provider.dart';
 import '../models/week_schedule.dart';
 import '../app.dart';
 import 'add_edit_alarm_screen.dart';
+import '../utils/next_alarm_summary.dart';
 
 class AlarmListScreen extends StatefulWidget {
   const AlarmListScreen({super.key});
@@ -21,13 +24,30 @@ class AlarmListScreen extends StatefulWidget {
 class _AlarmListScreenState extends State<AlarmListScreen>
     with WidgetsBindingObserver {
   HolidayInfo? _todayHoliday;
+  NextAlarm? _nextAlarm;
+  bool _nextAlarmError = false;
+  bool _nextAlarmLoading = true;
+  int _nextAlarmRequest = 0;
+  Timer? _nextAlarmRefreshTimer;
+  AlarmProvider? _alarmProvider;
+  ScheduleProvider? _scheduleProvider;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AlarmProvider>().loadAlarms();
+      if (!mounted) return;
+      _alarmProvider = context.read<AlarmProvider>();
+      _scheduleProvider = context.read<ScheduleProvider>();
+      _alarmProvider!.addListener(_refreshNextAlarm);
+      _scheduleProvider!.addListener(_refreshNextAlarm);
+      _nextAlarmRefreshTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _refreshNextAlarm(),
+      );
+      _alarmProvider!.loadAlarms();
+      _refreshNextAlarm();
       _loadTodayHoliday();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -37,6 +57,9 @@ class _AlarmListScreenState extends State<AlarmListScreen>
 
   @override
   void dispose() {
+    _nextAlarmRefreshTimer?.cancel();
+    _alarmProvider?.removeListener(_refreshNextAlarm);
+    _scheduleProvider?.removeListener(_refreshNextAlarm);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -48,8 +71,39 @@ class _AlarmListScreenState extends State<AlarmListScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       context.read<AlarmProvider>().loadAlarms();
+      _refreshNextAlarm();
       _loadTodayHoliday();
     }
+  }
+
+  Future<void> _refreshNextAlarm() async {
+    final alarmProvider = _alarmProvider ?? context.read<AlarmProvider>();
+    final scheduleProvider =
+        _scheduleProvider ?? context.read<ScheduleProvider>();
+    final request = ++_nextAlarmRequest;
+    if (!alarmProvider.loaded || !scheduleProvider.loaded) return;
+    if (mounted) setState(() => _nextAlarmLoading = true);
+    final now = DateTime.now();
+    NextAlarm? next;
+    var error = false;
+    try {
+      final overrides = List<WeekSchedule>.from(scheduleProvider.overrides);
+      next = await findNextEnabledAlarm(
+        alarmProvider.alarms,
+        from: now,
+        triggerFor: (alarm) =>
+            alarmProvider.nextTrigger(alarm, overrides: overrides),
+      );
+    } catch (e) {
+      debugPrint('Failed to refresh next alarm summary: $e');
+      error = true;
+    }
+    if (!mounted || request != _nextAlarmRequest) return;
+    setState(() {
+      _nextAlarm = next;
+      _nextAlarmError = error;
+      _nextAlarmLoading = false;
+    });
   }
 
   Future<void> _loadTodayHoliday() async {
@@ -62,9 +116,9 @@ class _AlarmListScreenState extends State<AlarmListScreen>
   }
 
   Future<void> _navigateToAdd() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddEditAlarmScreen()),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const AddEditAlarmScreen()));
     if (result == true && mounted) {
       await context.read<AlarmProvider>().loadAlarms();
     }
@@ -83,10 +137,20 @@ class _AlarmListScreenState extends State<AlarmListScreen>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
-    const weekDays = ['\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d', '\u65e5'];
-    final dateStr = '${now.month}\u6708${now.day}\u65e5 \u661f\u671f${weekDays[now.weekday - 1]}';
+    const weekDays = [
+      '\u4e00',
+      '\u4e8c',
+      '\u4e09',
+      '\u56db',
+      '\u4e94',
+      '\u516d',
+      '\u65e5',
+    ];
+    final dateStr =
+        '${now.month}\u6708${now.day}\u65e5 \u661f\u671f${weekDays[now.weekday - 1]}';
     final isSingleWeek =
-        context.watch<ScheduleProvider>().resolveWeekTypeByDate(now) == WeekType.single;
+        context.watch<ScheduleProvider>().resolveWeekTypeByDate(now) ==
+        WeekType.single;
 
     return Scaffold(
       backgroundColor: kBrandWarmBg,
@@ -97,7 +161,12 @@ class _AlarmListScreenState extends State<AlarmListScreen>
             // ── Sunrise hero ────────────────────────────────────
             Container(
               margin: const EdgeInsets.fromLTRB(kSpace5, kSpace3, kSpace5, 0),
-              padding: const EdgeInsets.fromLTRB(kSpace5, kSpace5, kSpace5, kSpace4),
+              padding: const EdgeInsets.fromLTRB(
+                kSpace5,
+                kSpace5,
+                kSpace5,
+                kSpace4,
+              ),
               decoration: BoxDecoration(
                 gradient: kSunriseGradient,
                 borderRadius: BorderRadius.circular(kRadiusXl),
@@ -126,12 +195,19 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                             const Text(
                               '\u6218\u9a6c\u95f9\u949f',
                               style: TextStyle(
-                                fontSize: 27,
+                                fontSize: 23,
                                 fontWeight: FontWeight.w700,
                                 color: kBrandTextPrimary,
                                 letterSpacing: -0.5,
                                 height: 1.1,
                               ),
+                            ),
+                            const SizedBox(height: kSpace3),
+                            _NextAlarmSummary(
+                              alarm: _nextAlarm,
+                              loading: _nextAlarmLoading,
+                              error: _nextAlarmError,
+                              now: now,
                             ),
                           ],
                         ),
@@ -143,9 +219,13 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                   Row(
                     children: [
                       _HeroPill(
-                        icon: isSingleWeek ? Icons.wb_twilight_rounded : Icons.weekend_rounded,
+                        icon: isSingleWeek
+                            ? Icons.wb_twilight_rounded
+                            : Icons.weekend_rounded,
                         text: isSingleWeek ? '本周单休' : '本周双休',
-                        color: isSingleWeek ? kBrandCopperDeep : kSemanticSuccess,
+                        color: isSingleWeek
+                            ? kBrandCopperDeep
+                            : kSemanticSuccess,
                       ),
                       if (_todayHoliday != null) ...[
                         const SizedBox(width: kSpace2),
@@ -153,9 +233,12 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                           icon: _todayHoliday!.isHoliday
                               ? Icons.beach_access_rounded
                               : Icons.work_rounded,
-                          text: _todayHoliday!.name ??
+                          text:
+                              _todayHoliday!.name ??
                               (_todayHoliday!.isHoliday ? '假期' : '补班'),
-                          color: _todayHoliday!.isHoliday ? kSemanticSuccess : kBrandCopperDeep,
+                          color: _todayHoliday!.isHoliday
+                              ? kSemanticSuccess
+                              : kBrandCopperDeep,
                         ),
                       ],
                     ],
@@ -193,7 +276,12 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                       // Section header before inactive group
                       if (inactive.isNotEmpty && index == active.length) {
                         return Padding(
-                          padding: const EdgeInsets.fromLTRB(kSpace6, kSpace4, kSpace6, kSpace2),
+                          padding: const EdgeInsets.fromLTRB(
+                            kSpace6,
+                            kSpace4,
+                            kSpace6,
+                            kSpace2,
+                          ),
                           child: Text(
                             '\u5df2\u505c\u7528',
                             style: TextStyle(
@@ -217,7 +305,9 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusLg)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(kRadiusLg),
+                              ),
                               title: const Text('\u5220\u9664\u95f9\u949f'),
                               content: Text(
                                 '\u786e\u5b9a\u8981\u5220\u9664 ${alarm.hour}:${alarm.minute.toString().padLeft(2, '0')} \u7684\u95f9\u949f\u5417\uff1f',
@@ -225,11 +315,19 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: const Text('\u53d6\u6d88', style: TextStyle(color: kBrandTextSecondary)),
+                                  child: const Text(
+                                    '\u53d6\u6d88',
+                                    style: TextStyle(
+                                      color: kBrandTextSecondary,
+                                    ),
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: const Text('\u5220\u9664', style: TextStyle(color: kSemanticError)),
+                                  child: const Text(
+                                    '\u5220\u9664',
+                                    style: TextStyle(color: kSemanticError),
+                                  ),
                                 ),
                               ],
                             ),
@@ -242,16 +340,25 @@ class _AlarmListScreenState extends State<AlarmListScreen>
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: kSpace6),
-                          margin: const EdgeInsets.symmetric(horizontal: kSpace5, vertical: 5),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: kSpace5,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: kSemanticError,
                             borderRadius: BorderRadius.circular(kRadiusLg),
                           ),
-                          child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 26),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
                         ),
                         child: AlarmTile(
                           alarm: alarm,
-                          onToggle: () => context.read<AlarmProvider>().toggleAlarm(alarm.id!),
+                          onToggle: () => context
+                              .read<AlarmProvider>()
+                              .toggleAlarm(alarm.id!),
                           onTap: () => _navigateToEdit(alarm),
                         ),
                       );
@@ -280,6 +387,108 @@ class _AlarmListScreenState extends State<AlarmListScreen>
 
 // ── Brand badge (hero, top-right) ──────────────────────────────────────────
 
+class _NextAlarmSummary extends StatelessWidget {
+  final NextAlarm? alarm;
+  final bool loading;
+  final bool error;
+  final DateTime now;
+
+  const _NextAlarmSummary({
+    required this.alarm,
+    required this.loading,
+    required this.error,
+    required this.now,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: kBrandBrown,
+            ),
+          ),
+          SizedBox(width: 8),
+          Text('正在查找下一次响铃', style: TextStyle(fontSize: 13, color: kBrandBrown)),
+        ],
+      );
+    }
+    if (error) {
+      return const Text(
+        '暂时无法获取下次响铃时间',
+        style: TextStyle(
+          fontSize: 14,
+          color: kBrandBrown,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    if (alarm == null) {
+      return const Text(
+        '暂无待响铃闹钟',
+        style: TextStyle(
+          fontSize: 14,
+          color: kBrandBrown,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    final trigger = alarm!.trigger;
+    final time =
+        '${trigger.hour.toString().padLeft(2, '0')}:${trigger.minute.toString().padLeft(2, '0')}';
+    final day = DateTime(trigger.year, trigger.month, trigger.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dayLabel = day == today
+        ? '今天'
+        : (day == tomorrow
+              ? '明天'
+              : '${trigger.month}\u6708${trigger.day}\u65e5');
+    final remaining = trigger.difference(now);
+    final safeMinutes = remaining.inMinutes.clamp(0, 1000000);
+    final hours = safeMinutes ~/ 60;
+    final minutes = safeMinutes % 60;
+    final countdown = safeMinutes < 1
+        ? '即将响铃'
+        : (hours > 0 ? '还有$hours小时$minutes分' : '还有$minutes分钟');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '下一次响铃',
+          style: TextStyle(
+            fontSize: 12,
+            color: kBrandCopperDeep,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          time,
+          style: const TextStyle(
+            fontSize: 32,
+            height: 1.05,
+            color: kBrandBrown,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          '$dayLabel · $countdown',
+          style: const TextStyle(
+            fontSize: 13,
+            color: kBrandBrown,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _BrandBadge extends StatelessWidget {
   const _BrandBadge();
 
@@ -299,7 +508,11 @@ class _BrandBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.alarm_on_rounded, color: kBrandCopperDeep, size: 24),
+      child: const Icon(
+        Icons.alarm_on_rounded,
+        color: kBrandCopperDeep,
+        size: 24,
+      ),
     );
   }
 }
@@ -310,7 +523,11 @@ class _HeroPill extends StatelessWidget {
   final IconData icon;
   final String text;
   final Color color;
-  const _HeroPill({required this.icon, required this.text, required this.color});
+  const _HeroPill({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +544,11 @@ class _HeroPill extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             text,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -357,7 +578,9 @@ class _GradientButton extends StatelessWidget {
       child: Container(
         width: expanded ? double.infinity : null,
         height: 52,
-        padding: expanded ? null : const EdgeInsets.symmetric(horizontal: kSpace6),
+        padding: expanded
+            ? null
+            : const EdgeInsets.symmetric(horizontal: kSpace6),
         decoration: BoxDecoration(
           gradient: kCopperGradient,
           borderRadius: BorderRadius.circular(kRadiusMd),
@@ -406,7 +629,11 @@ class _EmptyHero extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: kShadowRaised,
               ),
-              child: const Icon(Icons.alarm_add_rounded, color: Colors.white, size: 56),
+              child: const Icon(
+                Icons.alarm_add_rounded,
+                color: Colors.white,
+                size: 56,
+              ),
             ),
             const SizedBox(height: kSpace6),
             const Text(

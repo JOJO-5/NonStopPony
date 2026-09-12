@@ -21,7 +21,6 @@ class AlarmTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = alarm.isEnabled;
-    final opacity = isActive ? 1.0 : 0.45;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: kSpace5, vertical: 5),
@@ -29,7 +28,9 @@ class AlarmTile extends StatelessWidget {
         color: kBrandSurface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         border: Border.all(
-          color: isActive ? kBrandOutlineVariant : kBrandOutlineVariant.withValues(alpha: 0.6),
+          color: isActive
+              ? kBrandOutlineVariant
+              : kBrandOutlineVariant.withValues(alpha: 0.6),
           width: 1,
         ),
         boxShadow: isActive ? kShadowSoft : const [],
@@ -41,7 +42,12 @@ class AlarmTile extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(kRadiusLg),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(kSpace4, kSpace4, kSpace3, kSpace4),
+            padding: const EdgeInsets.fromLTRB(
+              kSpace4,
+              kSpace4,
+              kSpace3,
+              kSpace4,
+            ),
             child: Row(
               children: [
                 // ── Accent bar ────────────────────────────────
@@ -58,27 +64,21 @@ class AlarmTile extends StatelessWidget {
 
                 // ── Left: time + meta ────────────────────────
                 Expanded(
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _TimeDisplay(alarm: alarm),
-                        const SizedBox(height: 6),
-                        _MetaRow(alarm: alarm),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _TimeDisplay(alarm: alarm),
+                      const SizedBox(height: 6),
+                      _MetaRow(alarm: alarm),
+                    ],
                   ),
                 ),
 
                 // ── Right: switch ─────────────────────────────
                 Transform.scale(
                   scale: 0.9,
-                  child: Switch(
-                    value: isActive,
-                    onChanged: (_) => onToggle(),
-                  ),
+                  child: Switch(value: isActive, onChanged: (_) => onToggle()),
                 ),
               ],
             ),
@@ -105,10 +105,10 @@ class _TimeDisplay extends StatelessWidget {
       children: [
         Text(
           '$h:$m',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 40,
             fontWeight: FontWeight.w500,
-            color: kBrandTextPrimary,
+            color: alarm.isEnabled ? kBrandTextPrimary : kBrandTextMuted,
             height: 1.05,
             letterSpacing: -1.2,
             fontFeatures: [FontFeature.tabularFigures()],
@@ -119,10 +119,10 @@ class _TimeDisplay extends StatelessWidget {
           Flexible(
             child: Text(
               alarm.label!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: kBrandTextSecondary,
+                color: alarm.isEnabled ? kBrandTextSecondary : kBrandTextMuted,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -144,7 +144,13 @@ class _MetaRow extends StatelessWidget {
 
     final repeatText = _repeatLabel(alarm);
     if (repeatText != null) {
-      badges.add(_Badge(text: repeatText, outlined: true));
+      badges.add(
+        _Badge(
+          text: repeatText,
+          outlined: true,
+          color: alarm.isEnabled ? null : kBrandTextMuted,
+        ),
+      );
     }
 
     final weekBadge = _weekBadge(context, alarm);
@@ -174,15 +180,28 @@ class _MetaRow extends StatelessWidget {
       case RepeatType.custom:
         if (a.weekdays.isEmpty) return '\u4ec5\u4e00\u6b21';
         final sorted = List<int>.from(a.weekdays)..sort();
-        return sorted.map((d) {
-          const m = {1: '\u4e00', 2: '\u4e8c', 3: '\u4e09', 4: '\u56db', 5: '\u4e94', 6: '\u516d', 7: '\u65e5'};
-          return m[d] ?? '';
-        }).join(' ');
+        return sorted
+            .map((d) {
+              const m = {
+                1: '\u4e00',
+                2: '\u4e8c',
+                3: '\u4e09',
+                4: '\u56db',
+                5: '\u4e94',
+                6: '\u516d',
+                7: '\u65e5',
+              };
+              return m[d] ?? '';
+            })
+            .join(' ');
     }
   }
 
   Widget? _weekBadge(BuildContext context, AlarmInfo a) {
-    if (a.repeatType != RepeatType.singleRest && a.repeatType != RepeatType.doubleRest) return null;
+    if (a.repeatType != RepeatType.singleRest &&
+        a.repeatType != RepeatType.doubleRest) {
+      return null;
+    }
     final now = DateTime.now();
     // Use ScheduleProvider's resolveWeekTypeByDate which includes overrides,
     // NOT the top-level resolveWeekType() with empty overrides list.
@@ -192,7 +211,9 @@ class _MetaRow extends StatelessWidget {
 
     if (a.repeatType == RepeatType.singleRest) {
       return _Badge(
-        text: isSingle ? '\u672c\u5468\u5355\u4f11' : '\u672c\u5468\u53cc\u4f11',
+        text: isSingle
+            ? '\u672c\u5468\u5355\u4f11'
+            : '\u672c\u5468\u53cc\u4f11',
         color: isSingle ? kBrandCopper : kSemanticSuccess,
       );
     }
@@ -216,11 +237,13 @@ class _Badge extends StatelessWidget {
       decoration: BoxDecoration(
         color: outlined ? null : c.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: outlined ? Border.all(color: c.withValues(alpha: 0.35), width: 0.5) : null,
+        border: outlined
+            ? Border.all(color: c.withValues(alpha: 0.35), width: 0.5)
+            : null,
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: c),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: c),
       ),
     );
   }
