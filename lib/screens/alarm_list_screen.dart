@@ -36,6 +36,7 @@ class _AlarmListScreenState extends State<AlarmListScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    HolidayService.changes.addListener(_onHolidayChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _alarmProvider = context.read<AlarmProvider>();
@@ -57,11 +58,19 @@ class _AlarmListScreenState extends State<AlarmListScreen>
 
   @override
   void dispose() {
+    HolidayService.changes.removeListener(_onHolidayChanged);
     _nextAlarmRefreshTimer?.cancel();
     _alarmProvider?.removeListener(_refreshNextAlarm);
     _scheduleProvider?.removeListener(_refreshNextAlarm);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onHolidayChanged() {
+    if (!mounted) return;
+    _loadTodayHoliday();
+    // Recompute native alarms as well as the summary with the new calendar.
+    (_alarmProvider ?? context.read<AlarmProvider>()).loadAlarms();
   }
 
   /// An alarm can be dismissed while the app is backgrounded (native ringing
@@ -108,7 +117,7 @@ class _AlarmListScreenState extends State<AlarmListScreen>
 
   Future<void> _loadTodayHoliday() async {
     final info = await HolidayService.getHolidayInfo(DateTime.now());
-    if (mounted && info != null) {
+    if (mounted) {
       setState(() {
         _todayHoliday = info;
       });

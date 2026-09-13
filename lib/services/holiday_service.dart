@@ -2,7 +2,24 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
+
+enum HolidayDataSource { network, cache, bundled, unavailable }
+
+class HolidaySyncResult {
+  final int year;
+  final int count;
+  final HolidayDataSource source;
+  final String? error;
+  const HolidaySyncResult({
+    required this.year,
+    required this.count,
+    required this.source,
+    this.error,
+  });
+  bool get isAvailable => source != HolidayDataSource.unavailable;
+}
 
 /// Represents a day's holiday status from the API.
 ///
@@ -50,6 +67,7 @@ class HolidayService {
 
   static const String _tableName = 'holiday_cache';
   static Database? _db;
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
 
   static void setDatabase(Database db) {
     _db = db;
@@ -77,78 +95,164 @@ class HolidayService {
     if (parts.length != 2) {
       throw FormatException('Unexpected holiday date key: $key');
     }
-    final month = int.parse(parts[0]);
-    final day = int.parse(parts[1]);
+    final month = int.tryParse(parts[0]);
+    final day = int.tryParse(parts[1]);
+    if (month == null ||
+        day == null ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > DateTime(year, month + 1, 0).day) {
+      throw FormatException('Unexpected holiday date key: $key');
+    }
     return DateTime(year, month, day);
   }
 
-  /// Fetches holiday data for the given year from API and caches it.
-  /// Returns the number of days cached.
-  static Future<int> fetchAndCacheYear(int year) async {
+  static Future<HolidaySyncResult> syncYear(
+    int year, {
+    Future<String> Function(Uri uri)? fetchBody,
+  }) async {
+    String? failure;
+    try {
+      final uri = Uri.parse('https://timor.tech/api/holiday/year/$year/');
+      final body =
+          await (fetchBody == null ? _fetchNetwork(uri) : fetchBody(uri))
+              .timeout(const Duration(seconds: 12));
+      final count = await _commit(_parseResponse(body, year));
+      if (count != null) {
+        return HolidaySyncResult(
+          year: year,
+          count: count,
+          source: HolidayDataSource.network,
+        );
+      }
+      failure = '本地数据库不可用';
+    } catch (e) {
+      failure = '网络同步失败：$e';
+    }
+    int cached;
+    try {
+      cached = await _yearCount(year);
+    } catch (e) {
+      return HolidaySyncResult(
+        year: year,
+        count: 0,
+        source: HolidayDataSource.unavailable,
+        error: '本地数据库读取失败：$e',
+      );
+    }
+    if (cached > 0) {
+      return HolidaySyncResult(
+        year: year,
+        count: cached,
+        source: HolidayDataSource.cache,
+        error: failure,
+      );
+    }
+    if (year == 2026) {
+      try {
+        final entries = _parseResponse(
+          await rootBundle.loadString('assets/holidays/2026.json'),
+          year,
+        );
+        final count = await _commit(entries);
+        if (count != null) {
+          return HolidaySyncResult(
+            year: year,
+            count: count,
+            source: HolidayDataSource.bundled,
+            error: failure,
+          );
+        }
+      } catch (e) {
+        failure = '$failure；内置数据不可用：$e';
+      }
+    }
+    return HolidaySyncResult(
+      year: year,
+      count: 0,
+      source: HolidayDataSource.unavailable,
+      error: failure,
+    );
+  }
+
+  static Future<String> _fetchNetwork(Uri uri) async {
     final client = HttpClient();
     try {
-      // timor.tech API: https://timor.tech/api/holiday/year/$year
-      final request = await client.getUrl(
-        Uri.parse('https://timor.tech/api/holiday/year/$year'),
-      );
-      request.headers.set('User-Agent', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36');
-      final response = await request.close();
-
-      if (response.statusCode != 200) {
-        debugPrint('Holiday API returned status ${response.statusCode}');
-        return 0;
-      }
-
-      final body = await response.transform(utf8.decoder).join();
-      final json = jsonDecode(body) as Map<String, dynamic>;
-
-      if (json['code'] != 0) {
-        debugPrint('Holiday API error: ${json['message']}');
-        return 0;
-      }
-
-      final holiday = json['holiday'] as Map<String, dynamic>;
-      final db = _database();
-      if (db == null) return 0;
-      int count = 0;
-      // Use a batch for efficient insertion
-      final batch = db.batch();
-      for (final entry in holiday.entries) {
-        final dateStr = entry.key; // e.g. "01-01" or "1.1"
-        final info = entry.value as Map<String, dynamic>;
-
-        final date = parseDateKey(dateStr, year);
-        final isoDate = date.toIso8601String().substring(0, 10);
-
-        final isHoliday = info['holiday'] as bool? ?? false;
-        final name = info['name'] as String?;
-        // A day in the API can be: holiday=true (rest day) or holiday=false (make-up workday)
-        // If it's in the holiday map but holiday=false, it's a make-up workday (补班)
-        final isWorkday = !isHoliday;
-
-        batch.insert(
-          _tableName,
-          {
-            'date': isoDate,
-            'name': name,
-            'isHoliday': isHoliday ? 1 : 0,
-            'isWorkday': isWorkday ? 1 : 0,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        count++;
-      }
-
-      await batch.commit(noResult: true);
-      debugPrint('Cached $count holiday entries for $year');
-      return count;
-    } catch (e, stack) {
-      debugPrint('Failed to fetch holiday data for $year: $e\n$stack');
-      return 0;
+      return await (() async {
+        final request = await client.getUrl(uri);
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          throw HttpException('HTTP ${response.statusCode}', uri: uri);
+        }
+        return await response.transform(utf8.decoder).join();
+      })().timeout(const Duration(seconds: 12));
     } finally {
-      client.close();
+      client.close(force: true);
     }
   }
+
+  static List<Map<String, dynamic>> _parseResponse(String body, int year) {
+    final json = jsonDecode(body);
+    if (json is! Map<String, dynamic> ||
+        json['code'] != 0 ||
+        json['holiday'] is! Map ||
+        (json['holiday'] as Map).isEmpty) {
+      throw const FormatException('节假日响应无效或为空');
+    }
+    final result = <Map<String, dynamic>>[];
+    for (final entry in (json['holiday'] as Map).entries) {
+      final info = entry.value;
+      if (entry.key is! String || info is! Map || info['holiday'] is! bool) {
+        throw const FormatException('节假日条目无效');
+      }
+      final date = parseDateKey(entry.key as String, year);
+      if (date.year != year) throw const FormatException('节假日年份无效');
+      final holiday = info['holiday'] as bool;
+      result.add({
+        'date': date.toIso8601String().substring(0, 10),
+        'name': info['name'] as String?,
+        'isHoliday': holiday ? 1 : 0,
+        'isWorkday': holiday ? 0 : 1,
+      });
+    }
+    return result;
+  }
+
+  static Future<int?> _commit(List<Map<String, dynamic>> entries) async {
+    final db = _database();
+    if (db == null) return null;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final entry in entries) {
+        batch.insert(
+          _tableName,
+          entry,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+    changes.value++;
+    return entries.length;
+  }
+
+  static Future<int> _yearCount(int year) async {
+    final db = _database();
+    if (db == null) return 0;
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM $_tableName WHERE date >= ? AND date <= ?',
+      ['$year-01-01', '$year-12-31'],
+    );
+    return (rows.first['cnt'] as int?) ?? 0;
+  }
+
+  static Future<int> fetchAndCacheYear(int year) async {
+    final result = await syncYear(year);
+    if (!result.isAvailable) throw StateError(result.error ?? '暂无可用节假日数据');
+    return result.count;
+  }
+
 
   /// Gets holiday info for a specific date.
   /// Returns null if no cached data exists for this date.
@@ -197,7 +301,7 @@ class HolidayService {
     for (final year in yearsToFetch) {
       if (!await isYearCached(year)) {
         debugPrint('Fetching holiday data for $year...');
-        await fetchAndCacheYear(year);
+        await syncYear(year);
       }
     }
   }

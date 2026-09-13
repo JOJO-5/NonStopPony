@@ -36,11 +36,19 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
 
   /// Cached holiday info for the current month
   Map<String, HolidayInfo> _holidayMap = {};
+  int _holidayRequest = 0;
 
   @override
   void initState() {
     super.initState();
+    HolidayService.changes.addListener(_loadHolidays);
     _loadHolidays();
+  }
+
+  @override
+  void dispose() {
+    HolidayService.changes.removeListener(_loadHolidays);
+    super.dispose();
   }
 
   @override
@@ -52,9 +60,10 @@ class _WeekScheduleCalendarState extends State<WeekScheduleCalendar> {
   }
 
   Future<void> _loadHolidays() async {
+    final request = ++_holidayRequest;
     try {
       final holidays = await HolidayService.getMonthHolidays(widget.year, widget.month);
-      if (mounted) {
+      if (mounted && request == _holidayRequest) {
         setState(() {
           _holidayMap = {
             for (final h in holidays)

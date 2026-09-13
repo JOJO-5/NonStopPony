@@ -28,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _volumeRamp = true;
   bool _vibration = true;
   bool _nightMode = false;
+  bool _syncingHolidays = false;
+  String? _holidaySyncStatus;
 
   @override
   void initState() {
@@ -172,6 +174,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ── Holiday sync ─────────────────────────────────────────────────────
 
+  Future<void> _syncHolidays() async {
+    setState(() {
+      _syncingHolidays = true;
+      _holidaySyncStatus = null;
+    });
+    try {
+      final year = DateTime.now().year;
+      final results = await Future.wait([
+        HolidayService.syncYear(year),
+        HolidayService.syncYear(year + 1),
+      ]);
+      if (!mounted) return;
+      setState(() => _holidaySyncStatus = results.map(_describeHolidaySync).join('\n'));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _holidaySyncStatus = '同步失败，请稍后重试；已有节假日数据保留。');
+      }
+    } finally {
+      if (mounted) setState(() => _syncingHolidays = false);
+    }
+  }
+
+  String _describeHolidaySync(HolidaySyncResult result) {
+    final prefix = '${result.year} 年';
+    return switch (result.source) {
+      HolidayDataSource.network => '$prefix：已同步 ${result.count} 条',
+      HolidayDataSource.cache => '$prefix：联网更新失败，保留 ${result.count} 条缓存',
+      HolidayDataSource.bundled => '$prefix：联网更新失败，使用 ${result.count} 条内置数据',
+      HolidayDataSource.unavailable => '$prefix：暂无可用数据（${result.error ?? '请稍后重试'}）',
+    };
+  }
+
   Widget _buildHolidaySection(BuildContext context) {
     return _Card(
       title: '法定节假日',
@@ -182,38 +216,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 2),
           const Text('假期日闹钟不响，补班日闹钟照常响', style: TextStyle(fontSize: 13, color: kBrandCopper, fontWeight: FontWeight.w500)),
           const SizedBox(height: kSpace3),
+          if (_holidaySyncStatus != null) ...[
+            Text(_holidaySyncStatus!, style: const TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+            const SizedBox(height: kSpace2),
+          ],
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () async {
-                try {
-                  final now = DateTime.now();
-                  final cnt1 = await HolidayService.fetchAndCacheYear(now.year);
-                  final cnt2 = await HolidayService.fetchAndCacheYear(now.year + 1);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('同步完成：${now.year}年 $cnt1 条，${now.year + 1}年 $cnt2 条'),
-                        backgroundColor: kSemanticSuccess,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('同步失败：$e'),
-                        backgroundColor: kSemanticError,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }
-              },
+              onPressed: _syncingHolidays ? null : _syncHolidays,
               icon: const Icon(Icons.cloud_download_rounded, size: 18),
-              label: const Text('立即同步节假日数据'),
+              label: Text(_syncingHolidays ? '正在同步…' : '立即同步节假日数据'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
