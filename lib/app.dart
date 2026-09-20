@@ -10,6 +10,9 @@ import 'services/alarm_notification_service.dart';
 // 战马闹钟 · Design System
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Display version shared by settings and the about page.
+const kAppVersion = 'v2.0.8';
+
 // Core brand colors
 const kBrandCopper = Color(0xFFD4794A);
 const kBrandCopperDeep = Color(0xFFB85E32);

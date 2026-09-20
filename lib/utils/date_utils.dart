@@ -4,14 +4,24 @@ import '../models/week_schedule.dart';
 /// Returns the effective trigger DateTime for an [alarm] on a given [date].
 /// For singleRest alarms on a single-rest Saturday, uses [alarm.saturdayHour]
 /// and [alarm.saturdayMinute]; otherwise uses the alarm's base time.
-DateTime alarmTimeForDate(AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides,
-    {bool isWorkday = false}) {
+DateTime alarmTimeForDate(
+  AlarmInfo alarm,
+  DateTime date,
+  List<WeekSchedule> overrides, {
+  bool isWorkday = false,
+}) {
   if (alarm.repeatType == RepeatType.singleRest &&
       date.weekday == DateTime.saturday) {
     final wt = resolveWeekType(date, overrides);
     // 补班周六视为工作日，同样使用周六专用时间
     if (wt == WeekType.single || isWorkday) {
-      return DateTime(date.year, date.month, date.day, alarm.saturdayHour, alarm.saturdayMinute);
+      return DateTime(
+        date.year,
+        date.month,
+        date.day,
+        alarm.saturdayHour,
+        alarm.saturdayMinute,
+      );
     }
   }
   return DateTime(date.year, date.month, date.day, alarm.hour, alarm.minute);
@@ -59,9 +69,7 @@ WeekType resolveWeekType(DateTime date, List<WeekSchedule> overrides) {
   if (exactOverride != null) return exactOverride.weekType;
 
   // Find the nearest override BEFORE this week (the "anchor")
-  final priorOverrides = overrides
-      .where((o) => o.weekIndex < wn)
-      .toList()
+  final priorOverrides = overrides.where((o) => o.weekIndex < wn).toList()
     ..sort((a, b) => b.weekIndex.compareTo(a.weekIndex)); // descending
 
   if (priorOverrides.isNotEmpty) {
@@ -90,8 +98,12 @@ WeekType resolveWeekType(DateTime date, List<WeekSchedule> overrides) {
 ///
 /// [holidayInfo] is optional; if null, no holiday logic is applied.
 bool shouldRingOnDate(
-    AlarmInfo alarm, DateTime date, List<WeekSchedule> overrides,
-    {bool? isHoliday, bool? isWorkday}) {
+  AlarmInfo alarm,
+  DateTime date,
+  List<WeekSchedule> overrides, {
+  bool? isHoliday,
+  bool? isWorkday,
+}) {
   if (!alarm.isEnabled) return false;
 
   // ── Holiday/workday override (highest priority) ──
@@ -100,7 +112,8 @@ bool shouldRingOnDate(
   // If this day is a make-up workday (补班), ring for workday-semantic types;
   // once/custom fall through to their own rules.
   if (isWorkday == true) {
-    final isWorkdayType = alarm.repeatType == RepeatType.daily ||
+    final isWorkdayType =
+        alarm.repeatType == RepeatType.daily ||
         alarm.repeatType == RepeatType.weekdays ||
         alarm.repeatType == RepeatType.singleRest ||
         alarm.repeatType == RepeatType.doubleRest;
@@ -123,7 +136,8 @@ bool shouldRingOnDate(
     case RepeatType.weekdays:
       return date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
     case RepeatType.weekends:
-      return date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+      return date.weekday == DateTime.saturday ||
+          date.weekday == DateTime.sunday;
     case RepeatType.singleRest:
       if (date.weekday == DateTime.sunday) return false;
       if (date.weekday != DateTime.saturday) return true;
@@ -131,7 +145,8 @@ bool shouldRingOnDate(
       return wt == WeekType.single;
     case RepeatType.doubleRest:
       // Saturday and Sunday never ring
-      if (date.weekday == DateTime.saturday || date.weekday == DateTime.sunday) {
+      if (date.weekday == DateTime.saturday ||
+          date.weekday == DateTime.sunday) {
         return false;
       }
       return true;
@@ -171,8 +186,13 @@ Future<DateTime?> nextAlarmDateAsync(
     final candidate = DateTime(start.year, start.month, start.day + i);
     final isH = await isHolidayFn(candidate);
     final isW = await isWorkdayFn(candidate);
-    if (shouldRingOnDate(alarm, candidate, overrides,
-        isHoliday: isH, isWorkday: isW)) {
+    if (shouldRingOnDate(
+      alarm,
+      candidate,
+      overrides,
+      isHoliday: isH,
+      isWorkday: isW,
+    )) {
       return candidate;
     }
   }
@@ -186,22 +206,29 @@ String weekTypeLabel(WeekType wt) {
 
 /// Returns Chinese label for weekday (1=星期一, 7=星期日).
 String dayLabel(int weekday) {
-  const labels = [
-    '',
-    '星期一',
-    '星期二',
-    '星期三',
-    '星期四',
-    '星期五',
-    '星期六',
-    '星期日',
-  ];
+  const labels = ['', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
   return labels[weekday];
 }
 
 /// Returns which week of the month this date falls in (1-based).
 int weekOfMonth(DateTime date) {
   return ((date.day - 1) ~/ 7) + 1;
+}
+
+/// A user-facing label for the current calendar week.
+///
+/// The scheduler's [weekNumber] is an internal alternating-week index. It is
+/// deliberately not shown as an annual week number because that would make a
+/// date such as 2026-09-19 look like ISO week 142.
+String currentWeekRangeLabel(DateTime date) {
+  final monday = DateTime(
+    date.year,
+    date.month,
+    date.day,
+  ).subtract(Duration(days: date.weekday - DateTime.monday));
+  final sunday = monday.add(const Duration(days: 6));
+  String format(DateTime value) => '${value.month}月${value.day}日';
+  return '本周 ${format(monday)}—${format(sunday)}';
 }
 
 /// Returns the 7 DateTimes for a given year+month+weekOfMonth.

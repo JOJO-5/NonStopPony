@@ -47,8 +47,11 @@ void main() {
         final d = DateTime(2024, 1, 1).add(Duration(days: i * 7));
         final wt = autoWeekType(d);
         if (i > 0) {
-          expect(wt, prev == WeekType.single ? WeekType.double : WeekType.single,
-              reason: 'week ${i + 1} should alternate');
+          expect(
+            wt,
+            prev == WeekType.single ? WeekType.double : WeekType.single,
+            reason: 'week ${i + 1} should alternate',
+          );
         }
         prev = wt;
       }
@@ -82,7 +85,10 @@ void main() {
         weekType: WeekType.single,
       );
       final date = DateTime(2024, 1, 3); // weekOfMonth=1
-      expect(resolveWeekType(date, [override]), WeekType.single); // auto, not override
+      expect(
+        resolveWeekType(date, [override]),
+        WeekType.single,
+      ); // auto, not override
     });
 
     test('override for different month does not apply', () {
@@ -101,31 +107,51 @@ void main() {
   group('shouldRingOnDate', () {
     group('once', () {
       test('returns true when enabled', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.once);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.once,
+        );
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), true);
       });
 
       test('returns false when disabled', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.once, isEnabled: false);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.once,
+          isEnabled: false,
+        );
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), false);
       });
     });
 
     group('daily', () {
       test('rings every day', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.daily);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.daily,
+        );
         for (int dow = 1; dow <= 7; dow++) {
-          expect(shouldRingOnDate(alarm, DateTime(2024, 1, dow), []), true,
-              reason: 'dow=$dow should ring');
+          expect(
+            shouldRingOnDate(alarm, DateTime(2024, 1, dow), []),
+            true,
+            reason: 'dow=$dow should ring',
+          );
         }
       });
     });
 
     group('weekdays', () {
       test('rings Monday-Friday', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.weekdays);
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), true);  // Mon
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 5), []), true);  // Fri
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.weekdays,
+        );
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), true); // Mon
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 5), []), true); // Fri
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), false); // Sat
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), false); // Sun
       });
@@ -133,9 +159,13 @@ void main() {
 
     group('weekends', () {
       test('rings Saturday-Sunday', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.weekends);
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), true);  // Sat
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), true);   // Sun
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.weekends,
+        );
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), true); // Sat
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), true); // Sun
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), false); // Mon
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 5), []), false); // Fri
       });
@@ -143,26 +173,45 @@ void main() {
 
     group('singleRest (单休)', () {
       test('Saturday rings on single-rest weeks', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.singleRest,
+        );
         // Jan 6, 2024 = Saturday, week 1 (odd) = single-rest
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), true);
       });
 
       test('Sunday does not ring', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.singleRest,
+        );
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), false);
       });
 
       test('Mon-Fri always ring', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.singleRest,
+        );
         for (int dow = 1; dow <= 5; dow++) {
-          expect(shouldRingOnDate(alarm, DateTime(2024, 1, dow), []), true,
-              reason: 'dow=$dow should ring');
+          expect(
+            shouldRingOnDate(alarm, DateTime(2024, 1, dow), []),
+            true,
+            reason: 'dow=$dow should ring',
+          );
         }
       });
 
       test('Saturday does not ring on double-rest week', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.singleRest,
+        );
         // Jan 13, 2024 = Saturday, week 2 (even) = double-rest
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 13), []), false);
       });
@@ -170,23 +219,38 @@ void main() {
 
     group('doubleRest (双休)', () {
       test('Saturday does not ring on double-rest week', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.doubleRest,
+        );
         // Jan 13, 2024 = Saturday, week 2 (even) = double-rest → no ring
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 13), []), false);
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), false); // Sun
       });
 
       test('Saturday does not ring on single-rest week (workday)', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.doubleRest,
+        );
         // Jan 6, 2024 = Saturday, week 1 (odd) = single-rest → Saturday is workday, no ring
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), false);
       });
 
       test('Monday-Friday ring', () {
-        final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
+        final alarm = AlarmInfo.create(
+          hour: 8,
+          minute: 0,
+          repeatType: RepeatType.doubleRest,
+        );
         for (int dow = 1; dow <= 5; dow++) {
-          expect(shouldRingOnDate(alarm, DateTime(2024, 1, dow), []), true,
-              reason: 'dow=$dow should ring');
+          expect(
+            shouldRingOnDate(alarm, DateTime(2024, 1, dow), []),
+            true,
+            reason: 'dow=$dow should ring',
+          );
         }
       });
     });
@@ -199,11 +263,11 @@ void main() {
           repeatType: RepeatType.custom,
           weekdays: [1, 3, 5], // Mon, Wed, Fri
         );
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), true);  // Mon
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 1), []), true); // Mon
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 2), []), false); // Tue
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 3), []), true);  // Wed
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 3), []), true); // Wed
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 4), []), false); // Thu
-        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 5), []), true);  // Fri
+        expect(shouldRingOnDate(alarm, DateTime(2024, 1, 5), []), true); // Fri
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 6), []), false); // Sat
         expect(shouldRingOnDate(alarm, DateTime(2024, 1, 7), []), false); // Sun
       });
@@ -232,6 +296,16 @@ void main() {
     });
   });
 
+  group('currentWeekRangeLabel', () {
+    test('shows a readable Monday-to-Sunday date range', () {
+      expect(currentWeekRangeLabel(DateTime(2026, 9, 19)), '本周 9月14日—9月20日');
+    });
+
+    test('handles a week that crosses a month boundary', () {
+      expect(currentWeekRangeLabel(DateTime(2026, 10, 1)), '本周 9月28日—10月4日');
+    });
+  });
+
   group('dayLabel', () {
     test('returns correct Chinese labels', () {
       expect(dayLabel(1), '星期一');
@@ -245,8 +319,14 @@ void main() {
   });
 
   group('weekTypeLabel', () {
-    test('returns 单休 for single', () => expect(weekTypeLabel(WeekType.single), '单休'));
-    test('returns 双休 for double', () => expect(weekTypeLabel(WeekType.double), '双休'));
+    test(
+      'returns 单休 for single',
+      () => expect(weekTypeLabel(WeekType.single), '单休'),
+    );
+    test(
+      'returns 双休 for double',
+      () => expect(weekTypeLabel(WeekType.double), '双休'),
+    );
   });
 
   group('getWeekDays', () {
@@ -275,34 +355,55 @@ void main() {
 
   group('nextAlarmDate', () {
     test('finds next weekday for weekdays alarm', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.weekdays);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.weekdays,
+      );
       // Start from Sunday Jan 7, 2024 → next should be Mon Jan 8
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 7));
       expect(result, DateTime(2024, 1, 8));
     });
 
     test('returns null if no ring day found within 365 days', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.once, isEnabled: false);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.once,
+        isEnabled: false,
+      );
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 1));
       expect(result, null);
     });
 
     test('singleRest: Jan 1 (Mon) is a ringing day, returns start date', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.singleRest,
+      );
       // Start from Mon Jan 1, 2024 (ringing) → returns Jan 1
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 1));
       expect(result, DateTime(2024, 1, 1));
     });
 
     test('singleRest: from Mon of double week, returns that Monday', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.singleRest,
+      );
       // Jan 8 is Monday of week 2 (double) → Mon always rings
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 8));
       expect(result, DateTime(2024, 1, 8));
     });
 
     test('doubleRest: skips both Sat and Sun, finds Monday', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.doubleRest);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.doubleRest,
+      );
       // Start from Sat Jan 6, 2024 → Sat & Sun skipped, Mon Jan 8 rings
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 6));
       expect(result, DateTime(2024, 1, 8));
@@ -316,14 +417,24 @@ void main() {
         weekOfMonth: 2,
         weekType: WeekType.single, // force week 2 to single
       );
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.singleRest,
+      );
       // Jan 13 is Sat in week 2; normally double (no ring), but override forces single → rings
-      final result = nextAlarmDate(alarm, [override], from: DateTime(2024, 1, 13));
+      final result = nextAlarmDate(alarm, [
+        override,
+      ], from: DateTime(2024, 1, 13));
       expect(result, DateTime(2024, 1, 13));
     });
 
     test('year boundary: Jan 1, 2024 is Monday (ringing) → returns Jan 1', () {
-      final alarm = AlarmInfo.create(hour: 8, minute: 0, repeatType: RepeatType.singleRest);
+      final alarm = AlarmInfo.create(
+        hour: 8,
+        minute: 0,
+        repeatType: RepeatType.singleRest,
+      );
       // Jan 1 is Monday → ringing immediately
       final result = nextAlarmDate(alarm, [], from: DateTime(2024, 1, 1));
       expect(result, DateTime(2024, 1, 1));
@@ -331,49 +442,104 @@ void main() {
   });
 
   group('workday (补班) policy', () {
-    AlarmInfo alarmOf(RepeatType t, {List<int> weekdays = const []}) => AlarmInfo.create(
-        hour: 7, minute: 0, repeatType: t, weekdays: weekdays);
+    AlarmInfo alarmOf(RepeatType t, {List<int> weekdays = const []}) =>
+        AlarmInfo.create(hour: 7, minute: 0, repeatType: t, weekdays: weekdays);
     final saturday = DateTime(2026, 8, 15); // Saturday
-    final sunday = DateTime(2026, 8, 16);   // Sunday
+    final sunday = DateTime(2026, 8, 16); // Sunday
 
     test('补班日强制 weekdays 类型响', () {
-      expect(shouldRingOnDate(alarmOf(RepeatType.weekdays), saturday, [],
-          isWorkday: true), isTrue);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.weekdays),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isTrue,
+      );
     });
     test('补班日强制 doubleRest 响', () {
-      expect(shouldRingOnDate(alarmOf(RepeatType.doubleRest), saturday, [],
-          isWorkday: true), isTrue);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.doubleRest),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isTrue,
+      );
     });
     test('补班日强制 singleRest 周日响', () {
-      expect(shouldRingOnDate(alarmOf(RepeatType.singleRest), sunday, [],
-          isWorkday: true), isTrue);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.singleRest),
+          sunday,
+          [],
+          isWorkday: true,
+        ),
+        isTrue,
+      );
     });
     test('补班日强制 daily 响', () {
-      expect(shouldRingOnDate(alarmOf(RepeatType.daily), saturday, [],
-          isWorkday: true), isTrue);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.daily),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isTrue,
+      );
     });
     test('补班日不强制 custom', () {
-      expect(shouldRingOnDate(
-          alarmOf(RepeatType.custom, weekdays: [DateTime.monday]), saturday, [],
-          isWorkday: true), isFalse);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.custom, weekdays: [DateTime.monday]),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isFalse,
+      );
     });
     test('补班日不强制 once（未选星期照常响，选了则按星期）', () {
-      expect(shouldRingOnDate(alarmOf(RepeatType.once), saturday, [],
-          isWorkday: true), isTrue); // weekdays 空 → 正常规则 true
-      expect(shouldRingOnDate(
-          alarmOf(RepeatType.once, weekdays: [DateTime.monday]), saturday, [],
-          isWorkday: true), isFalse);
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.once),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isTrue,
+      ); // weekdays 空 → 正常规则 true
+      expect(
+        shouldRingOnDate(
+          alarmOf(RepeatType.once, weekdays: [DateTime.monday]),
+          saturday,
+          [],
+          isWorkday: true,
+        ),
+        isFalse,
+      );
     });
   });
 
   group('alarmTimeForDate workday Saturday', () {
     test('双休周周六补班用周六专用时间', () {
       final alarm = AlarmInfo.create(
-          hour: 7, minute: 0, repeatType: RepeatType.singleRest,
-          saturdayHour: 8, saturdayMinute: 30);
+        hour: 7,
+        minute: 0,
+        repeatType: RepeatType.singleRest,
+        saturdayHour: 8,
+        saturdayMinute: 30,
+      );
       // 2026-08-15 所在周为偶数周（双休），无 override
-      final t = alarmTimeForDate(alarm, DateTime(2026, 8, 15), [],
-          isWorkday: true);
+      final t = alarmTimeForDate(
+        alarm,
+        DateTime(2026, 8, 15),
+        [],
+        isWorkday: true,
+      );
       expect(t.hour, 8);
       expect(t.minute, 30);
     });

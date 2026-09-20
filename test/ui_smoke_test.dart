@@ -13,6 +13,7 @@ import 'package:alarm_clock/screens/add_edit_alarm_screen.dart';
 import 'package:alarm_clock/services/alarm_storage_service.dart';
 import 'package:alarm_clock/widgets/alarm_tile.dart';
 import 'package:alarm_clock/models/alarm_info.dart';
+import 'package:alarm_clock/screens/about_screen.dart';
 
 /// Host-side render checks for the warm-sunrise UI: the alarm tile must lay
 /// out cleanly at phone width for every repeat type (no overflow / build
@@ -54,7 +55,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  AlarmInfo alarmOf(RepeatType type, {bool enabled = true, String? label}) => AlarmInfo(
+  AlarmInfo alarmOf(RepeatType type, {bool enabled = true, String? label}) =>
+      AlarmInfo(
         hour: 7,
         minute: 30,
         repeatType: type,
@@ -66,13 +68,18 @@ void main() {
       );
 
   testWidgets('alarm tile lays out at phone width', (tester) async {
-    await pumpTile(tester, alarmOf(RepeatType.daily, label: '\u8d77\u5e8a\u4e0a\u73ed'));
+    await pumpTile(
+      tester,
+      alarmOf(RepeatType.daily, label: '\u8d77\u5e8a\u4e0a\u73ed'),
+    );
     expect(find.text('07:30'), findsOneWidget);
     expect(find.text('\u8d77\u5e8a\u4e0a\u73ed'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('alarm tile renders singleRest + disabled variants', (tester) async {
+  testWidgets('alarm tile renders singleRest + disabled variants', (
+    tester,
+  ) async {
     await pumpTile(tester, alarmOf(RepeatType.singleRest));
     expect(tester.takeException(), isNull);
 
@@ -80,7 +87,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('add/edit screen renders with 一次性 default repeat', (tester) async {
+  testWidgets('add/edit screen renders with 一次性 default repeat', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1200, 2700);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -94,8 +103,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // Regression: a brand-new alarm must show the 一次性 option, not 每天.
-    expect(find.text('\u4e00\u6b21\u6027 \u00b7 \u54cd\u94c3\u4e00\u6b21'), findsOneWidget);
+    expect(
+      find.text('\u4e00\u6b21\u6027 \u00b7 \u54cd\u94c3\u4e00\u6b21'),
+      findsOneWidget,
+    );
     expect(find.text('\u4fdd\u5b58'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('about easter egg opens its reward after seven logo taps', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AboutScreen()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final logo = find.byKey(const Key('about-logo'));
+    expect(logo, findsOneWidget);
+    for (var i = 0; i < 7; i++) {
+      await tester.tap(logo);
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.pump();
+
+    expect(find.text('战马，醒了。'), findsOneWidget);
+    expect(find.text('好，明早见'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

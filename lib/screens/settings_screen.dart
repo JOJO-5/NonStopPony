@@ -63,10 +63,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Consumer<ScheduleProvider>(
         builder: (context, provider, _) {
           if (!provider.loaded) {
-            return const Center(child: CircularProgressIndicator(color: kBrandCopper));
+            return const Center(
+              child: CircularProgressIndicator(color: kBrandCopper),
+            );
           }
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(kSpace5, kSpace3, kSpace5, kSpace12),
+            padding: const EdgeInsets.fromLTRB(
+              kSpace5,
+              kSpace3,
+              kSpace5,
+              kSpace12,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -95,12 +102,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ── Week type ─────────────────────────────────────────────────────────
 
-  Widget _buildWeekTypeSection(BuildContext context, ScheduleProvider provider) {
+  Widget _buildWeekTypeSection(
+    BuildContext context,
+    ScheduleProvider provider,
+  ) {
     final now = DateTime.now();
     final weekOfMonth = ((now.day - 1) ~/ 7) + 1;
-    final resolvedType = provider.resolveWeekType(now.year, now.month, weekOfMonth);
+    final resolvedType = provider.resolveWeekType(
+      now.year,
+      now.month,
+      weekOfMonth,
+    );
     final hasOverride = provider.overrides.cast<WeekSchedule?>().any(
-      (o) => o!.year == now.year && o.month == now.month && o.weekOfMonth == weekOfMonth,
+      (o) =>
+          o!.year == now.year &&
+          o.month == now.month &&
+          o.weekOfMonth == weekOfMonth,
     );
     final autoType = autoWeekType(now);
     final autoLabel = autoType == WeekType.single ? '单休周' : '双休周';
@@ -114,13 +131,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             children: [
               Text(
-                '${now.year}年第${weekNumber(now)}周',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: kBrandTextPrimary),
+                currentWeekRangeLabel(now),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: kBrandTextPrimary,
+                ),
               ),
               const SizedBox(width: kSpace2),
               Text(
                 '自动: $autoLabel',
-                style: const TextStyle(fontSize: 13, color: kBrandTextSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: kBrandTextSecondary,
+                ),
               ),
             ],
           ),
@@ -131,14 +155,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 label: '单休周',
                 active: resolvedType == WeekType.single,
                 activeColor: kBrandCopper,
-                onTap: () => provider.setOverride(now.year, now.month, weekOfMonth, WeekType.single),
+                onTap: () => provider.setOverride(
+                  now.year,
+                  now.month,
+                  weekOfMonth,
+                  WeekType.single,
+                ),
               ),
               const SizedBox(width: kSpace2),
               _TypeChip(
                 label: '双休周',
                 active: resolvedType == WeekType.double,
                 activeColor: kSemanticSuccess,
-                onTap: () => provider.setOverride(now.year, now.month, weekOfMonth, WeekType.double),
+                onTap: () => provider.setOverride(
+                  now.year,
+                  now.month,
+                  weekOfMonth,
+                  WeekType.double,
+                ),
               ),
               if (hasOverride) ...[
                 const SizedBox(width: kSpace2),
@@ -146,16 +180,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: '清除',
                   active: false,
                   activeColor: kBrandTextSecondary,
-                  onTap: () => provider.removeOverride(now.year, now.month, weekOfMonth),
+                  onTap: () =>
+                      provider.removeOverride(now.year, now.month, weekOfMonth),
                 ),
               ],
             ],
           ),
           const SizedBox(height: kSpace2),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: kSpace3, vertical: 5),
+            padding: const EdgeInsets.symmetric(
+              horizontal: kSpace3,
+              vertical: 5,
+            ),
             decoration: BoxDecoration(
-              color: (resolvedType == WeekType.single ? kBrandCopper : kSemanticSuccess).withValues(alpha: 0.1),
+              color:
+                  (resolvedType == WeekType.single
+                          ? kBrandCopper
+                          : kSemanticSuccess)
+                      .withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(kRadiusSm),
             ),
             child: Text(
@@ -163,7 +205,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: resolvedType == WeekType.single ? kBrandCopper : kSemanticSuccess,
+                color: resolvedType == WeekType.single
+                    ? kBrandCopper
+                    : kSemanticSuccess,
               ),
             ),
           ),
@@ -186,7 +230,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         HolidayService.syncYear(year + 1),
       ]);
       if (!mounted) return;
-      setState(() => _holidaySyncStatus = results.map(_describeHolidaySync).join('\n'));
+      setState(
+        () => _holidaySyncStatus = results.map(_describeHolidaySync).join('\n'),
+      );
     } catch (_) {
       if (mounted) {
         setState(() => _holidaySyncStatus = '同步失败，请稍后重试；已有节假日数据保留。');
@@ -202,7 +248,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       HolidayDataSource.network => '$prefix：已同步 ${result.count} 条',
       HolidayDataSource.cache => '$prefix：联网更新失败，保留 ${result.count} 条缓存',
       HolidayDataSource.bundled => '$prefix：联网更新失败，使用 ${result.count} 条内置数据',
-      HolidayDataSource.unavailable => '$prefix：暂无可用数据（${result.error ?? '请稍后重试'}）',
+      HolidayDataSource.unavailable =>
+        '$prefix：暂无可用数据（${result.error ?? '请稍后重试'}）',
     };
   }
 
@@ -212,12 +259,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('自动同步国家法定节假日和调休安排', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text(
+            '自动同步国家法定节假日和调休安排',
+            style: TextStyle(fontSize: 13, color: kBrandTextSecondary),
+          ),
           const SizedBox(height: 2),
-          const Text('假期日闹钟不响，补班日闹钟照常响', style: TextStyle(fontSize: 13, color: kBrandCopper, fontWeight: FontWeight.w500)),
+          const Text(
+            '假期日闹钟不响，补班日闹钟照常响',
+            style: TextStyle(
+              fontSize: 13,
+              color: kBrandCopper,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: kSpace3),
           if (_holidaySyncStatus != null) ...[
-            Text(_holidaySyncStatus!, style: const TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+            Text(
+              _holidaySyncStatus!,
+              style: const TextStyle(fontSize: 13, color: kBrandTextSecondary),
+            ),
             const SizedBox(height: kSpace2),
           ],
           SizedBox(
@@ -228,7 +288,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: Text(_syncingHolidays ? '正在同步…' : '立即同步节假日数据'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                ),
               ),
             ),
           ),
@@ -243,10 +305,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final subtitle = !_ringtoneLoaded
         ? '加载中…'
         : _ringtoneUri == SettingsPreferencesService.defaultRingtoneUri
-            ? _ringtoneTitle
-            : _ringtoneTitle.length > 12
-                ? '${_ringtoneTitle.substring(0, 12)}…'
-                : _ringtoneTitle;
+        ? _ringtoneTitle
+        : _ringtoneTitle.length > 12
+        ? '${_ringtoneTitle.substring(0, 12)}…'
+        : _ringtoneTitle;
 
     return _Card(
       title: '铃声设置',
@@ -255,7 +317,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _RowTile(
             label: '默认铃声',
             subtitle: subtitle,
-            trailing: const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: kBrandOutline,
+              size: 18,
+            ),
             onTap: () async {
               final result = await Navigator.push<RingtoneSelection>(
                 context,
@@ -271,7 +337,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
               if (result != null && mounted) {
-                await SettingsPreferencesService.setRingtone(result.uri, result.title);
+                await SettingsPreferencesService.setRingtone(
+                  result.uri,
+                  result.title,
+                );
                 setState(() {
                   _ringtoneUri = result.uri;
                   _ringtoneTitle = result.title;
@@ -290,7 +359,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const _Divider(),
-          _SwitchTile(label: '渐强', subtitle: '闹钟响起时逐渐增大音量', value: _volumeRamp, onChanged: (v) => setState(() => _volumeRamp = v)),
+          _SwitchTile(
+            label: '渐强',
+            subtitle: '闹钟响起时逐渐增大音量',
+            value: _volumeRamp,
+            onChanged: (v) => setState(() => _volumeRamp = v),
+          ),
         ],
       ),
     );
@@ -304,7 +378,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('如果闹钟没有响，可能是系统通知权限未开启', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text(
+            '如果闹钟没有响，可能是系统通知权限未开启',
+            style: TextStyle(fontSize: 13, color: kBrandTextSecondary),
+          ),
           const SizedBox(height: kSpace3),
           SizedBox(
             width: double.infinity,
@@ -314,7 +391,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: const Text('测试通知'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                ),
               ),
             ),
           ),
@@ -343,7 +422,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('如果闹钟不响，请确保以下权限已开启', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text(
+            '如果闹钟不响，请确保以下权限已开启',
+            style: TextStyle(fontSize: 13, color: kBrandTextSecondary),
+          ),
           const SizedBox(height: kSpace3),
           _PermissionButton(
             icon: Icons.notifications_rounded,
@@ -411,13 +493,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('小米/HyperOS 设备需额外配置以下三项', style: TextStyle(fontSize: 13, color: kBrandTextSecondary)),
+          const Text(
+            '小米/HyperOS 设备需额外配置以下三项',
+            style: TextStyle(fontSize: 13, color: kBrandTextSecondary),
+          ),
           const SizedBox(height: kSpace3),
-          _DiagStep(num: '1', title: '关闭电池优化', desc: '设置 → 应用设置 → 战马闹钟 → 省电策略 → 无限制'),
+          _DiagStep(
+            num: '1',
+            title: '关闭电池优化',
+            desc: '设置 → 应用设置 → 战马闹钟 → 省电策略 → 无限制',
+          ),
           const SizedBox(height: kSpace2),
-          _DiagStep(num: '2', title: '开启自启动', desc: '设置 → 应用设置 → 战马闹钟 → 自启动 → 开启'),
+          _DiagStep(
+            num: '2',
+            title: '开启自启动',
+            desc: '设置 → 应用设置 → 战马闹钟 → 自启动 → 开启',
+          ),
           const SizedBox(height: kSpace2),
-          _DiagStep(num: '3', title: '闹钟精确权限', desc: '设置 → 应用设置 → 战马闹钟 → 其他权限 → 闹钟权限 → 允许'),
+          _DiagStep(
+            num: '3',
+            title: '闹钟精确权限',
+            desc: '设置 → 应用设置 → 战马闹钟 → 其他权限 → 闹钟权限 → 允许',
+          ),
           const SizedBox(height: kSpace3),
           SizedBox(
             width: double.infinity,
@@ -427,7 +524,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: const Text('打开系统应用设置'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kBrandCopper,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                ),
               ),
             ),
           ),
@@ -449,7 +548,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _RowTile(
             label: '锁屏全屏显示',
             subtitle: 'Android 14+ 全屏通知权限，开启后闹钟可在锁屏弹出全屏界面',
-            trailing: const Icon(Icons.open_in_new_rounded, color: kBrandCopper, size: 18),
+            trailing: const Icon(
+              Icons.open_in_new_rounded,
+              color: kBrandCopper,
+              size: 18,
+            ),
             onTap: _openFullScreenIntentSettings,
           ),
           const SizedBox(height: kSpace3),
@@ -492,9 +595,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: '其他',
       child: Column(
         children: [
-          _SwitchTile(label: '震动', value: _vibration, onChanged: (v) => setState(() => _vibration = v)),
+          _SwitchTile(
+            label: '震动',
+            value: _vibration,
+            onChanged: (v) => setState(() => _vibration = v),
+          ),
           const _Divider(),
-          _SwitchTile(label: '夜间模式 (23:00-7:00 静音)', subtitle: '夜间时段自动静音闹钟', value: _nightMode, onChanged: (v) => setState(() => _nightMode = v)),
+          _SwitchTile(
+            label: '夜间模式 (23:00-7:00 静音)',
+            subtitle: '夜间时段自动静音闹钟',
+            value: _nightMode,
+            onChanged: (v) => setState(() => _nightMode = v),
+          ),
         ],
       ),
     );
@@ -528,16 +640,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: kBrandCopper.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(kRadiusMd),
               ),
-              child: const Icon(Icons.alarm_on_rounded, color: kBrandCopper, size: 26),
+              child: const Icon(
+                Icons.alarm_on_rounded,
+                color: kBrandCopper,
+                size: 26,
+              ),
             ),
             const SizedBox(width: kSpace3),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('战马闹钟', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kBrandTextPrimary)),
+                  Text(
+                    '战马闹钟',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: kBrandTextPrimary,
+                    ),
+                  ),
                   SizedBox(height: 2),
-                  Text('v1.0.0', style: TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+                  Text(
+                    kAppVersion,
+                    style: TextStyle(fontSize: 12, color: kBrandTextSecondary),
+                  ),
                 ],
               ),
             ),
@@ -570,7 +696,15 @@ class _Card extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kBrandTextSecondary, letterSpacing: 0.5)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: kBrandTextSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: kSpace3),
           child,
         ],
@@ -584,7 +718,12 @@ class _RowTile extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
-  const _RowTile({required this.label, this.subtitle, this.trailing, this.onTap});
+  const _RowTile({
+    required this.label,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -600,8 +739,21 @@ class _RowTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 14, color: kBrandTextPrimary)),
-                  if (subtitle case final subtitle?) Text(subtitle, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: kBrandTextPrimary,
+                    ),
+                  ),
+                  if (subtitle case final subtitle?)
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: kBrandTextSecondary,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -618,7 +770,12 @@ class _SwitchTile extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
-  const _SwitchTile({required this.label, this.subtitle, required this.value, required this.onChanged});
+  const _SwitchTile({
+    required this.label,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -629,18 +786,24 @@ class _SwitchTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 14, color: kBrandTextPrimary)),
-              if (subtitle case final subtitle?) Text(subtitle, style: const TextStyle(fontSize: 12, color: kBrandTextSecondary)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 14, color: kBrandTextPrimary),
+              ),
+              if (subtitle case final subtitle?)
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: kBrandTextSecondary,
+                  ),
+                ),
             ],
           ),
         ),
         Transform.scale(
           scale: 0.85,
-          child: Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: kBrandCopper,
-          ),
+          child: Switch(value: value, onChanged: onChanged),
         ),
       ],
     );
@@ -661,7 +824,12 @@ class _TypeChip extends StatelessWidget {
   final bool active;
   final Color activeColor;
   final VoidCallback onTap;
-  const _TypeChip({required this.label, required this.active, required this.activeColor, required this.onTap});
+  const _TypeChip({
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -672,11 +840,18 @@ class _TypeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? activeColor : activeColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(kRadiusSm),
-          border: Border.all(color: active ? activeColor : activeColor.withValues(alpha: 0.25), width: 0.5),
+          border: Border.all(
+            color: active ? activeColor : activeColor.withValues(alpha: 0.25),
+            width: 0.5,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 12, fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? Colors.white : activeColor),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+            color: active ? Colors.white : activeColor,
+          ),
         ),
       ),
     );
@@ -701,16 +876,38 @@ class _DiagStep extends StatelessWidget {
             color: kBrandCopper.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Center(child: Text(num, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kBrandCopper))),
+          child: Center(
+            child: Text(
+              num,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: kBrandCopper,
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: kSpace2),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kBrandTextPrimary)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: kBrandTextPrimary,
+                ),
+              ),
               const SizedBox(height: 1),
-              Text(desc, style: const TextStyle(fontSize: 11, color: kBrandTextSecondary)),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: kBrandTextSecondary,
+                ),
+              ),
             ],
           ),
         ),
@@ -740,8 +937,13 @@ class _PermissionButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: kBrandTextPrimary,
         side: const BorderSide(color: kBrandOutlineVariant),
-        padding: const EdgeInsets.symmetric(horizontal: kSpace3, vertical: kSpace2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusSm)),
+        padding: const EdgeInsets.symmetric(
+          horizontal: kSpace3,
+          vertical: kSpace2,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm),
+        ),
       ),
       child: Row(
         children: [
@@ -751,10 +953,21 @@ class _PermissionButton extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: kBrandTextPrimary)),
-                Text(desc,
-                    style: const TextStyle(fontSize: 11, color: kBrandTextSecondary)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: kBrandTextPrimary,
+                  ),
+                ),
+                Text(
+                  desc,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: kBrandTextSecondary,
+                  ),
+                ),
               ],
             ),
           ),

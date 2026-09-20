@@ -10,7 +10,8 @@ class AboutScreen extends StatefulWidget {
   State<AboutScreen> createState() => _AboutScreenState();
 }
 
-class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin {
+class _AboutScreenState extends State<AboutScreen>
+    with TickerProviderStateMixin {
   int _tapCount = 0;
   bool _easterEggActivated = false;
   late AnimationController _pulseController;
@@ -53,6 +54,9 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
     if (_tapCount >= 7) {
       setState(() => _easterEggActivated = true);
       _gallopController.forward();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showEasterEggDialog();
+      });
     } else if (_tapCount >= 4) {
       // Small feedback
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -65,6 +69,87 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
         ),
       );
     }
+  }
+
+  Future<void> _showEasterEggDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kBrandWarmBg,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kRadiusXl),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(
+          kSpace6,
+          kSpace6,
+          kSpace6,
+          kSpace3,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 92,
+              height: 92,
+              padding: const EdgeInsets.all(kSpace2),
+              decoration: BoxDecoration(
+                color: kBrandCopper.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: kBrandCopper.withValues(alpha: 0.28),
+                    blurRadius: 22,
+                    spreadRadius: 6,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset('assets/icon.png', fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: kSpace4),
+            const Text(
+              '战马，醒了。',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: kBrandCopper,
+              ),
+            ),
+            const SizedBox(height: kSpace2),
+            const Text(
+              '每一个认真迎接清晨的人，\n都是自己的战马。',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: kBrandTextPrimary,
+                height: 1.8,
+              ),
+            ),
+            const SizedBox(height: kSpace2),
+            const Text(
+              '明天，也一起准时出发。',
+              style: TextStyle(fontSize: 12, color: kBrandTextSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: kBrandCopperAction,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(kRadiusMd),
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('好，明早见'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -84,11 +169,15 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
             const SizedBox(height: kSpace8),
             // Logo with easter egg
             GestureDetector(
+              key: const Key('about-logo'),
               onTap: _onLogoTap,
               child: ScaleTransition(
                 scale: _easterEggActivated
                     ? _gallopAnimation
-                    : Tween<double>(begin: 1.0, end: 1.05).animate(_pulseAnimation),
+                    : Tween<double>(
+                        begin: 1.0,
+                        end: 1.05,
+                      ).animate(_pulseAnimation),
                 child: Container(
                   width: 100,
                   height: 100,
@@ -127,7 +216,7 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
             ),
             const SizedBox(height: kSpace1),
             const Text(
-              'v1.0.0',
+              kAppVersion,
               style: TextStyle(fontSize: 14, color: kBrandTextSecondary),
             ),
             const SizedBox(height: kSpace8),
@@ -136,7 +225,8 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
             _StoryCard(
               icon: Icons.auto_stories_rounded,
               title: '战马的故事',
-              content: '每一匹战马，都有自己的战场。\n\n'
+              content:
+                  '每一匹战马，都有自己的战场。\n\n'
                   '有人在周一到周五冲锋，有人周六还在加班。\n'
                   '法定节假日调休，闹钟却只认周一到周五。\n'
                   '单休的双休的，谁不是在努力奔跑？\n\n'
@@ -148,7 +238,8 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
             _StoryCard(
               icon: Icons.work_history_rounded,
               title: '为什么做战马闹钟？',
-              content: '痛点很简单：\n\n'
+              content:
+                  '痛点很简单：\n\n'
                   '❌ 定"工作日"响 → 调休周六上班不响\n'
                   '❌ 定"每天"响 → 休息日被吵醒，炸毛\n'
                   '❌ 单双休轮换 → 每周手动开关闹钟\n\n'
@@ -163,7 +254,8 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
             _StoryCard(
               icon: Icons.psychology_rounded,
               title: '设计理念',
-              content: '闹钟应该是贴心的，不是烦人的。\n\n'
+              content:
+                  '闹钟应该是贴心的，不是烦人的。\n\n'
                   '它知道你什么时候上班，\n'
                   '也知道你什么时候该休息。\n'
                   '不多响一次，也不少响一次。',
@@ -185,14 +277,13 @@ class _AboutScreenState extends State<AboutScreen> with TickerProviderStateMixin
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(kRadiusLg),
-                  border: Border.all(color: kBrandCopper.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: kBrandCopper.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      '🐎',
-                      style: TextStyle(fontSize: 48),
-                    ),
+                    const Text('🐎', style: TextStyle(fontSize: 48)),
                     const SizedBox(height: kSpace3),
                     const Text(
                       '你唤醒了战马！',

@@ -22,8 +22,8 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
   late List<int> _selectedDays;
   late RepeatType _repeatType;
   late TextEditingController _labelController;
-  late String _ringtone;       // URI
-  late String _ringtoneTitle;  // Display name
+  late String _ringtone; // URI
+  late String _ringtoneTitle; // Display name
   late AlarmTaskType _taskType;
   bool _saving = false;
 
@@ -53,8 +53,12 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
     // Initialise scroll controllers so the wheels start at the correct value.
     _hourController = FixedExtentScrollController(initialItem: _hour);
     _minuteController = FixedExtentScrollController(initialItem: _minute);
-    _satHourController = FixedExtentScrollController(initialItem: _saturdayHour);
-    _satMinuteController = FixedExtentScrollController(initialItem: _saturdayMinute);
+    _satHourController = FixedExtentScrollController(
+      initialItem: _saturdayHour,
+    );
+    _satMinuteController = FixedExtentScrollController(
+      initialItem: _saturdayMinute,
+    );
   }
 
   @override
@@ -106,7 +110,7 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
           currentRingtone: _ringtone,
           currentRingtoneTitle: _ringtoneTitle,
         ),
-        transitionsBuilder: (_, animation, _ , child) =>
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 250),
       ),
@@ -121,293 +125,377 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
 
     return Scaffold(
       backgroundColor: kBrandWarmBg,
       appBar: AppBar(
-        title: Text(_isEditing ? '\u7f16\u8f91\u95f9\u949f' : '\u65b0\u5efa\u95f9\u949f'),
+        title: Text(
+          _isEditing ? '\u7f16\u8f91\u95f9\u949f' : '\u65b0\u5efa\u95f9\u949f',
+        ),
         backgroundColor: kBrandWarmBg,
         foregroundColor: kBrandTextPrimary,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: kSpace5, vertical: kSpace4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Roller-style time picker ───────────────────
-            _SectionCard(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                kSpace5,
+                kSpace4,
+                kSpace5,
+                kSpace6,
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    '\u65f6\u95f4',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kBrandTextSecondary),
-                  ),
-                  const SizedBox(height: kSpace4),
-                  SizedBox(
-                    height: 200,
-                    child: Row(
+                  // ── Roller-style time picker ───────────────────
+                  _SectionCard(
+                    child: Column(
                       children: [
-                        // Hour wheel
-                        Expanded(
-                          child: _TimeWheel(
-                            controller: _hourController,
-                            itemCount: 24,
-                            initialValue: _hour,
-                            onSelectedItemChanged: (index) {
-                              setState(() => _hour = index);
-                            },
+                        const Text(
+                          '\u65f6\u95f4',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: kBrandTextSecondary,
                           ),
                         ),
-                        // Colon separator
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            ':',
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.w300,
-                              color: kBrandCopper,
-                              height: 1.0,
-                            ),
+                        const SizedBox(height: kSpace4),
+                        SizedBox(
+                          height: 200,
+                          child: Row(
+                            children: [
+                              // Hour wheel
+                              Expanded(
+                                child: _TimeWheel(
+                                  controller: _hourController,
+                                  itemCount: 24,
+                                  initialValue: _hour,
+                                  onSelectedItemChanged: (index) {
+                                    setState(() => _hour = index);
+                                  },
+                                ),
+                              ),
+                              // Colon separator
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Text(
+                                  ':',
+                                  style: TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w300,
+                                    color: kBrandCopper,
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ),
+                              // Minute wheel
+                              Expanded(
+                                child: _TimeWheel(
+                                  controller: _minuteController,
+                                  itemCount: 60,
+                                  initialValue: _minute,
+                                  onSelectedItemChanged: (index) {
+                                    setState(() => _minute = index);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        // Minute wheel
-                        Expanded(
-                          child: _TimeWheel(
-                            controller: _minuteController,
-                            itemCount: 60,
-                            initialValue: _minute,
-                            onSelectedItemChanged: (index) {
-                              setState(() => _minute = index);
-                            },
+                        const SizedBox(height: kSpace2),
+                        Text(
+                          timeStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: kBrandTextSecondary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: kSpace2),
-                  Text(
-                    timeStr,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: kBrandTextSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: kSpace3),
+                  const SizedBox(height: kSpace3),
 
-            // ── Saturday time picker (only for singleRest) ──
-            if (_repeatType == RepeatType.singleRest)
-              _SectionCard(
-                child: Column(
-                  children: [
-                    const Text('周六起床时间（单休周）', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kBrandCopper)),
-                    const SizedBox(height: kSpace2),
-                    SizedBox(
-                      height: 160,
-                      child: Row(
+                  // ── Saturday time picker (only for singleRest) ──
+                  if (_repeatType == RepeatType.singleRest)
+                    _SectionCard(
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: _TimeWheel(
-                              controller: _satHourController,
-                              itemCount: 24,
-                              initialValue: _saturdayHour,
-                              onSelectedItemChanged: (i) => setState(() => _saturdayHour = i),
+                          const Text(
+                            '周六起床时间（单休周）',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: kBrandCopper,
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(':', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: kBrandCopper, height: 1.0)),
-                          ),
-                          Expanded(
-                            child: _TimeWheel(
-                              controller: _satMinuteController,
-                              itemCount: 60,
-                              initialValue: _saturdayMinute,
-                              onSelectedItemChanged: (i) => setState(() => _saturdayMinute = i),
+                          const SizedBox(height: kSpace2),
+                          SizedBox(
+                            height: 160,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _TimeWheel(
+                                    controller: _satHourController,
+                                    itemCount: 24,
+                                    initialValue: _saturdayHour,
+                                    onSelectedItemChanged: (i) =>
+                                        setState(() => _saturdayHour = i),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Text(
+                                    ':',
+                                    style: TextStyle(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.w300,
+                                      color: kBrandCopper,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _TimeWheel(
+                                    controller: _satMinuteController,
+                                    itemCount: 60,
+                                    initialValue: _saturdayMinute,
+                                    onSelectedItemChanged: (i) =>
+                                        setState(() => _saturdayMinute = i),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
 
-            const SizedBox(height: kSpace3),
+                  const SizedBox(height: kSpace3),
 
-            // ── Repeat picker ───────────────────────────────
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionLabel(label: '\u91cd\u590d'),
-                  const SizedBox(height: kSpace3),
-                  // Week type dropdown — drives RepeatPicker selection
-                  _WeekTypeDropdown(
-                    value: _repeatType,
-                    onChanged: (type) {
-                      setState(() {
-                        _repeatType = type;
-                        // Auto-set selectedDays based on dropdown choice.
-                        // Each case ends with break to avoid fall-through.
-                        switch (type) {
-                          case RepeatType.once:
-                            _selectedDays = [];
-                            break;
-                          case RepeatType.daily:
-                            _selectedDays = [1, 2, 3, 4, 5, 6, 7];
-                            break;
-                          case RepeatType.weekdays:
-                            _selectedDays = [1, 2, 3, 4, 5];
-                            break;
-                          case RepeatType.weekends:
-                            _selectedDays = [6, 7];
-                            break;
-                          case RepeatType.singleRest:
-                            _selectedDays = [1, 2, 3, 4, 5, 6];
-                            break;
-                          case RepeatType.doubleRest:
-                            _selectedDays = [1, 2, 3, 4, 5];
-                            break;
-                          case RepeatType.custom:
-                            // Keep current selection for custom
-                            break;
-                        }
-                      });
-                    },
+                  // ── Repeat picker ───────────────────────────────
+                  _SectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _SectionLabel(label: '\u91cd\u590d'),
+                        const SizedBox(height: kSpace3),
+                        // Week type dropdown — drives RepeatPicker selection
+                        _WeekTypeDropdown(
+                          value: _repeatType,
+                          onChanged: (type) {
+                            setState(() {
+                              _repeatType = type;
+                              // Auto-set selectedDays based on dropdown choice.
+                              // Each case ends with break to avoid fall-through.
+                              switch (type) {
+                                case RepeatType.once:
+                                  _selectedDays = [];
+                                  break;
+                                case RepeatType.daily:
+                                  _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+                                  break;
+                                case RepeatType.weekdays:
+                                  _selectedDays = [1, 2, 3, 4, 5];
+                                  break;
+                                case RepeatType.weekends:
+                                  _selectedDays = [6, 7];
+                                  break;
+                                case RepeatType.singleRest:
+                                  _selectedDays = [1, 2, 3, 4, 5, 6];
+                                  break;
+                                case RepeatType.doubleRest:
+                                  _selectedDays = [1, 2, 3, 4, 5];
+                                  break;
+                                case RepeatType.custom:
+                                  // Keep current selection for custom
+                                  break;
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(height: kSpace3),
+                        RepeatPicker(
+                          selectedDays: _selectedDays,
+                          onChanged: (days) {
+                            setState(() {
+                              _selectedDays = days;
+                              // Auto-infer repeatType from selected days
+                              if (days.isEmpty) {
+                                _repeatType = RepeatType.once;
+                              } else if (days.length == 7 &&
+                                  days.every(
+                                    (d) => [1, 2, 3, 4, 5, 6, 7].contains(d),
+                                  )) {
+                                _repeatType = RepeatType.daily;
+                              } else if (days.length == 6 &&
+                                  days.every((d) => d >= 1 && d <= 6)) {
+                                // Mon-Sat selected → singleRest (single-week gets 1 day off)
+                                _repeatType = RepeatType.singleRest;
+                              } else if (days.length == 5 &&
+                                  days.every((d) => d >= 1 && d <= 5)) {
+                                // Mon-Fri → could be weekdays or doubleRest
+                                // Prefer doubleRest as it's the more common alarm pattern
+                                _repeatType = RepeatType.doubleRest;
+                              } else if (days.length == 2 &&
+                                  days.contains(6) &&
+                                  days.contains(7)) {
+                                _repeatType = RepeatType.weekends;
+                              } else {
+                                _repeatType = RepeatType.custom;
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
                   ),
+
                   const SizedBox(height: kSpace3),
-                  RepeatPicker(
-                    selectedDays: _selectedDays,
-                    onChanged: (days) {
-                      setState(() {
-                        _selectedDays = days;
-                        // Auto-infer repeatType from selected days
-                        if (days.isEmpty) {
-                          _repeatType = RepeatType.once;
-                        } else if (days.length == 7 &&
-                            days.every((d) => [1, 2, 3, 4, 5, 6, 7].contains(d))) {
-                          _repeatType = RepeatType.daily;
-                        } else if (days.length == 6 &&
-                            days.every((d) => d >= 1 && d <= 6)) {
-                          // Mon-Sat selected → singleRest (single-week gets 1 day off)
-                          _repeatType = RepeatType.singleRest;
-                        } else if (days.length == 5 &&
-                            days.every((d) => d >= 1 && d <= 5)) {
-                          // Mon-Fri → could be weekdays or doubleRest
-                          // Prefer doubleRest as it's the more common alarm pattern
-                          _repeatType = RepeatType.doubleRest;
-                        } else if (days.length == 2 &&
-                            days.contains(6) && days.contains(7)) {
-                          _repeatType = RepeatType.weekends;
-                        } else {
-                          _repeatType = RepeatType.custom;
-                        }
-                      });
-                    },
+
+                  // ── Label ───────────────────────────────────────
+                  _SectionCard(
+                    child: TextField(
+                      controller: _labelController,
+                      decoration: const InputDecoration(
+                        hintText:
+                            '\u4f8b\u5982\uff1a\u8d77\u5e8a\u3001\u4e0a\u73ed',
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(
+                          color: kBrandOutline,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: kBrandTextPrimary,
+                      ),
+                    ),
                   ),
+
+                  const SizedBox(height: kSpace3),
+
+                  // ── Ringtone ────────────────────────────────────
+                  _SectionCard(
+                    child: InkWell(
+                      onTap: _showRingtonePicker,
+                      borderRadius: BorderRadius.circular(kRadiusMd),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: kSpace1),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const _SectionLabel(label: '铃声'),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _ringtone == 'default'
+                                      ? Icons.music_note_rounded
+                                      : Icons.audio_file_rounded,
+                                  size: 16,
+                                  color: kBrandCopper,
+                                ),
+                                const SizedBox(width: kSpace1),
+                                Text(
+                                  _ringtoneTitle,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: kBrandTextSecondary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(width: kSpace1),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: kBrandOutline,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: kSpace6),
+                  // ── Closing task ─────────────────────────────────
+                  _SectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _SectionLabel(label: '关闭任务'),
+                        const SizedBox(height: kSpace2),
+                        Text(
+                          '响铃时需要完成任务才能关闭闹钟',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: kBrandTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: kSpace3),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _TaskTypeChip(
+                                label: '无',
+                                icon: Icons.alarm_off_rounded,
+                                selected: _taskType == AlarmTaskType.none,
+                                onTap: () => setState(
+                                  () => _taskType = AlarmTaskType.none,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: kSpace2),
+                            Expanded(
+                              child: _TaskTypeChip(
+                                label: '算术题',
+                                icon: Icons.calculate_rounded,
+                                selected: _taskType == AlarmTaskType.math,
+                                onTap: () => setState(
+                                  () => _taskType = AlarmTaskType.math,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: kSpace3),
                 ],
               ),
             ),
-
-            const SizedBox(height: kSpace3),
-
-            // ── Label ───────────────────────────────────────
-            _SectionCard(
-              child: TextField(
-                controller: _labelController,
-                decoration: const InputDecoration(
-                  hintText: '\u4f8b\u5982\uff1a\u8d77\u5e8a\u3001\u4e0a\u73ed',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: kBrandOutline, fontSize: 15),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              kSpace5,
+              kSpace2,
+              kSpace5,
+              kSpace3,
+            ),
+            decoration: BoxDecoration(
+              color: kBrandWarmBg,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x142D1B0E),
+                  blurRadius: 14,
+                  offset: Offset(0, -4),
                 ),
-                style: const TextStyle(fontSize: 15, color: kBrandTextPrimary),
-              ),
+              ],
             ),
-
-            const SizedBox(height: kSpace3),
-
-            // ── Ringtone ────────────────────────────────────
-            _SectionCard(
-              child: InkWell(
-                onTap: _showRingtonePicker,
-                borderRadius: BorderRadius.circular(kRadiusMd),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: kSpace1),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const _SectionLabel(label: '铃声'),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _ringtone == 'default' ? Icons.music_note_rounded : Icons.audio_file_rounded,
-                            size: 16, color: kBrandCopper,
-                          ),
-                          const SizedBox(width: kSpace1),
-                          Text(
-                            _ringtoneTitle,
-                            style: const TextStyle(fontSize: 14, color: kBrandTextSecondary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(width: kSpace1),
-                          const Icon(Icons.chevron_right, color: kBrandOutline, size: 18),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: kSpace6),
-            // ── Closing task ─────────────────────────────────
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionLabel(label: '关闭任务'),
-                  const SizedBox(height: kSpace2),
-                  Text(
-                    '响铃时需要完成任务才能关闭闹钟',
-                    style: TextStyle(fontSize: 12, color: kBrandTextSecondary),
-                  ),
-                  const SizedBox(height: kSpace3),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TaskTypeChip(
-                          label: '无',
-                          icon: Icons.alarm_off_rounded,
-                          selected: _taskType == AlarmTaskType.none,
-                          onTap: () => setState(() => _taskType = AlarmTaskType.none),
-                        ),
-                      ),
-                      const SizedBox(width: kSpace2),
-                      Expanded(
-                        child: _TaskTypeChip(
-                          label: '算术题',
-                          icon: Icons.calculate_rounded,
-                          selected: _taskType == AlarmTaskType.math,
-                          onTap: () => setState(() => _taskType = AlarmTaskType.math),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Save button ─────────────────────────────────
-            SizedBox(
+            child: SizedBox(
               height: 52,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -426,10 +514,13 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text(
-                              '\u4fdd\u5b58',
+                              '保存',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -441,10 +532,8 @@ class _AddEditAlarmScreenState extends State<AddEditAlarmScreen> {
                 ),
               ),
             ),
-
-            const SizedBox(height: kSpace8),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -584,16 +673,37 @@ class _WeekTypeDropdown extends StatelessWidget {
           value: displayValue,
           isDense: true,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more_rounded, color: kBrandTextSecondary),
+          icon: const Icon(
+            Icons.expand_more_rounded,
+            color: kBrandTextSecondary,
+          ),
           style: const TextStyle(fontSize: 14, color: kBrandTextPrimary),
           items: const [
             DropdownMenuItem(value: RepeatType.once, child: Text('一次性 · 响铃一次')),
-            DropdownMenuItem(value: RepeatType.daily, child: Text('每天 · 周一至周日')),
-            DropdownMenuItem(value: RepeatType.weekdays, child: Text('工作日 · 周一至周五')),
-            DropdownMenuItem(value: RepeatType.weekends, child: Text('周末 · 周六日')),
-            DropdownMenuItem(value: RepeatType.singleRest, child: Text('单双休 · 单周休一天')),
-            DropdownMenuItem(value: RepeatType.doubleRest, child: Text('仅双休 · 周末全休')),
-            DropdownMenuItem(value: RepeatType.custom, child: Text('自定义 · 手动选择')),
+            DropdownMenuItem(
+              value: RepeatType.daily,
+              child: Text('每天 · 周一至周日'),
+            ),
+            DropdownMenuItem(
+              value: RepeatType.weekdays,
+              child: Text('工作日 · 周一至周五'),
+            ),
+            DropdownMenuItem(
+              value: RepeatType.weekends,
+              child: Text('周末 · 周六日'),
+            ),
+            DropdownMenuItem(
+              value: RepeatType.singleRest,
+              child: Text('单双休 · 单周休一天'),
+            ),
+            DropdownMenuItem(
+              value: RepeatType.doubleRest,
+              child: Text('仅双休 · 周末全休'),
+            ),
+            DropdownMenuItem(
+              value: RepeatType.custom,
+              child: Text('自定义 · 手动选择'),
+            ),
           ],
           onChanged: (v) {
             if (v != null) onChanged(v);
@@ -607,6 +717,7 @@ class _WeekTypeDropdown extends StatelessWidget {
   /// All types are now represented in the menu, so this is the identity map.
   static RepeatType _toDisplayType(RepeatType type) => type;
 }
+
 // ── Task type chip ─────────────────────────────────────────────
 class _TaskTypeChip extends StatelessWidget {
   final String label;
@@ -624,9 +735,14 @@ class _TaskTypeChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: kSpace3, horizontal: kSpace3),
+        padding: const EdgeInsets.symmetric(
+          vertical: kSpace3,
+          horizontal: kSpace3,
+        ),
         decoration: BoxDecoration(
-          color: selected ? kBrandCopper.withValues(alpha: 0.12) : kBrandSurfaceAlt,
+          color: selected
+              ? kBrandCopper.withValues(alpha: 0.12)
+              : kBrandSurfaceAlt,
           borderRadius: BorderRadius.circular(kRadiusSm),
           border: Border.all(
             color: selected ? kBrandCopper : kBrandOutlineVariant,
@@ -636,7 +752,11 @@ class _TaskTypeChip extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: selected ? kBrandCopper : kBrandTextSecondary),
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? kBrandCopper : kBrandTextSecondary,
+            ),
             const SizedBox(width: kSpace1),
             Text(
               label,
